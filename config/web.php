@@ -1,79 +1,103 @@
 <?php
-
+// Настройки веб-приложения. Заменяет config/web.php из шаблона yii2-app-basic.
+$local  = require __DIR__ . '/local.php';
 $params = require __DIR__ . '/params.php';
-$db = require __DIR__ . '/db.php';
+$params['isTest'] = $local['isTest'];
+
+// Строка подключения одна на оба логина. LoginTimeout = 5 секунд, чтобы при
+// недоступном сервере вход не висел полминуты.
+$dsn = "sqlsrv:Server={$local['sqlServer']};Database={$local['database']};"
+     . 'TrustServerCertificate=yes;LoginTimeout=5';
 
 $config = [
-    'id' => 'basic',
-    'basePath' => dirname(__DIR__),
-    'bootstrap' => ['log'],
-    'container' => [
-        'singletons' => [
-            \yii\mail\MailerInterface::class => [
-                'class' => \yii\symfonymailer\Mailer::class,
-                // send all mails to a file by default.
-                'useFileTransport' => true,
-                'viewPath' => '@app/mail',
-            ],
-        ],
-    ],
-    'aliases' => [
+    'id'         => 'uchet',
+    'name'       => 'Учёт',
+    'basePath'   => dirname(__DIR__),
+    'language'   => 'ru-RU',
+    'timeZone'   => 'Europe/Moscow',
+    'bootstrap'  => ['log'],
+    'aliases'    => [
         '@bower' => '@vendor/bower-asset',
         '@npm'   => '@vendor/npm-asset',
     ],
     'components' => [
         'request' => [
-            // !!! insert a secret key in the following (if it is empty) - this is required by cookie validation
-            'cookieValidationKey' => 'u87jHCCeJdMsK7AkgBBj3QTGStCmt_Qf',
+            'cookieValidationKey' => $local['cookieValidationKey'],
         ],
         'cache' => [
-            'class' => \yii\caching\FileCache::class,
+            'class' => yii\caching\ApcCache::class,   // apcu уже есть в образе
+            'useApcu' => true,
+        ],
+        'session' => [
+            'timeout' => 36000,                        // 10 часов, как в uchet-php.ini
         ],
         'user' => [
-            'identityClass' => \app\models\User::class,
-            'enableAutoLogin' => true,
+            'identityClass'   => app\models\User::class,
+            'enableAutoLogin' => false,                // «запомнить меня» не нужно: пароль живёт только в сессии
+            'loginUrl'        => ['site/login'],
+            'accessChecker'   => 'perm',               // can() спрашивает PermChecker, а не таблицы RBAC
+        ],
+        // Права теми же процедурами, что GetPermission в Access (components/PermChecker.php)
+        'perm' => [
+            'class' => app\components\PermChecker::class,
+            'ttl'   => 300,                            // изменения прав в Access видны через 5 минут
+        ],
+        // Подключение ПОЛЬЗОВАТЕЛЯ. Логин и пароль подставляются из сессии
+        // в 'on beforeRequest' ниже. Как в Access: каждый работает под своим SQL-логином.
+        'db' => [
+            'class' => yii\db\Connection::class,
+            'dsn'   => $dsn,
+        ],
+        // Технический логин: только чтение прав и консольные задачи (раздел 3 документа пилота).
+        'dbSys' => [
+            'class'    => yii\db\Connection::class,
+            'dsn'      => $dsn,
+            'username' => $local['sysLogin'],
+            'password' => $local['sysPassword'],
         ],
         'errorHandler' => [
             'errorAction' => 'site/error',
         ],
-        'mailer' => \yii\mail\MailerInterface::class,
         'log' => [
             'traceLevel' => YII_DEBUG ? 3 : 0,
-            'targets' => [
-                [
-                    'class' => \yii\log\FileTarget::class,
-                    'levels' => ['error', 'warning'],
-                ],
+            'targets'    => [
+                ['class' => yii\log\FileTarget::class, 'levels' => ['error', 'warning']],
             ],
         ],
-        'db' => $db,
-        /*
         'urlManager' => [
-            'enablePrettyUrl' => true,
-            'showScriptName' => false,
-            'rules' => [
-            ],
+            'enablePrettyUrl' => true,                 // /site/login вместо index.php?r=site/login
+            'showScriptName'  => false,
         ],
-        */
     ],
     'params' => $params,
+
+    // Перед каждым запросом: если человек вошёл, берём его логин/пароль из сессии
+    // и отдаём компоненту db. Само подключение откроется только при первом запросе к базе.
+    'on beforeRequest' => function () use ($local) {
+        $session = Yii::$app->session;
+        $login   = $session->get('sqlLogin');
+        $enc     = $session->get('sqlPass');
+        if ($login && $enc) {
+            $pass = Yii::$app->security->decryptByKey(base64_decode($enc), $local['sessionKey']);
+            if ($pass !== false) {
+                Yii::$app->db->username = $login;
+                Yii::$app->db->password = $pass;
+            }
+        }
+    },
 ];
 
-if (YII_ENV_DEV) {
-    // configuration adjustments for 'dev' environment
-    $config['bootstrap'][] = 'debug';
-    $config['modules']['debug'] = [
-        'class' => \yii\debug\Module::class,
-        // uncomment the following to add your IP if you are not connecting from localhost.
-        //'allowedIPs' => ['127.0.0.1', '::1'],
-    ];
+// Ключ шифрования пароля нужен и при входе (LoginForm), кладём его в params.
+$config['params']['sessionKey'] = $local['sessionKey'];
 
-    $config['bootstrap'][] = 'gii';
-    $config['modules']['gii'] = [
-        'class' => \yii\gii\Module::class,
-        // uncomment the following to add your IP if you are not connecting from localhost.
-        //'allowedIPs' => ['127.0.0.1', '::1'],
-    ];
+// Панель отладки и Gii только в dev и только с твоего компьютера:
+// панель показывает данные запросов, в том числе введённые на форме входа.
+if (YII_ENV_DEV) {
+    $myIps = $local['debugIps'] ?? ['127.0.0.1', '::1'];
+    $config['bootstrap'][]      = 'debug';
+    $config['modules']['debug'] = ['class' => yii\debug\Module::class, 'allowedIPs' => $myIps];
+    $config['bootstrap'][]      = 'gii';
+    $config['modules']['gii']   = ['class' => yii\gii\Module::class, 'allowedIPs' => $myIps];
 }
 
 return $config;

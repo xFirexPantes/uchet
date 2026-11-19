@@ -33,4 +33,7 @@ tests/_output/*
 tests/_support/_generated
 
 #vagrant folder
-/.vagrant
+/.vagrant/config/local.php
+
+# пароли и ключи, только на этом сервере
+/config/local.php

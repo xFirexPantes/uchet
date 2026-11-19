@@ -1,0 +1,13 @@
+<?php
+// Скопируй в config/local.php и заполни. Файл local.php НЕ кладётся в git (.gitignore).
+// В dev и prod он свой: разные базы, разные ключи.
+return [
+    'sqlServer'           => '192.168.0.198,1433',     // SQLTOREX, порт 1433
+    'database'            => 'TRXSQL7',               // тестовая копия; боевая TRXSQL
+    'sysLogin'            => 'uchet_web',             // технический логин (шаг 12)
+    'sysPassword'         => '',
+    'cookieValidationKey' => '',                      // php -r "echo bin2hex(random_bytes(32));"
+    'sessionKey'          => '',                      // ДРУГАЯ случайная строка: шифрует пароли в сессии
+    'isTest'              => true,                    // prod: false (нет плашки ТЕСТ)
+    'debugIps'            => ['IP_ТВОЕГО_КОМПЬЮТЕРА'],  // только dev: кому видна панель отладки
+];

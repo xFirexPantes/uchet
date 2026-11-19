@@ -1,97 +1,51 @@
 <?php
-
-declare(strict_types=1);
-
 namespace app\models;
 
+use Yii;
 use yii\base\BaseObject;
 use yii\web\IdentityInterface;
 
+/**
+ * Пользователь = SQL-логин. Своей таблицы пользователей у веба нет, ActiveRecord не нужен.
+ * id пользователя в Yii = его SQL-логин (тот же, что SUSER_SNAME() в процедурах).
+ */
 class User extends BaseObject implements IdentityInterface
 {
-    public int|string $id = '';
-    public string $username = '';
-    public string $passwordHash = '';
-    public string $authKey = '';
-    public string $accessToken = '';
-    private static array $_users = [
-        '100' => [
-            'id' => '100',
-            'username' => 'admin',
-            // password: admin
-            'passwordHash' => '$2y$13$gYAywKSkhfZDq9FLNdm7buKnvlRxDexf5xipSMAxQPDUxpaptmZJu',
-            'authKey' => 'test100key',
-            'accessToken' => '100-token',
-        ],
-        '101' => [
-            'id' => '101',
-            'username' => 'demo',
-            // password: demo
-            'passwordHash' => '$2y$13$alRLq1PGVMlGYwS/Y3iy3ewQns1Z8ol8Iq6Zb5k7ZwEhblA1aL29y',
-            'authKey' => 'test101key',
-            'accessToken' => '101-token',
-        ],
-    ];
-    /**
-     * {@inheritdoc}
-     */
-    public static function findIdentity($id): static|null
-    {
-        return isset(self::$_users[$id]) ? new static(self::$_users[$id]) : null;
-    }
+    public string $login = '';
 
-    /**
-     * {@inheritdoc}
-     */
-    public static function findIdentityByAccessToken($token, $type = null): static|null
+    /** Yii вызывает на каждом запросе: «кто этот человек по id из сессии». */
+    public static function findIdentity($id)
     {
-        foreach (self::$_users as $user) {
-            if ($user['accessToken'] === $token) {
-                return new static($user);
-            }
+        // Человек «вошёл», только пока в сессии лежит его пароль (см. LoginForm).
+        if ($id && Yii::$app->session->get('sqlLogin') === $id) {
+            return new static(['login' => $id]);
         }
-
         return null;
     }
 
-    /**
-     * Finds user by username
-     *
-     * @param string $username
-     * @return static|null
-     */
-    public static function findByUsername(string $username): static|null
+    public static function findIdentityByAccessToken($token, $type = null)
     {
-        foreach (self::$_users as $user) {
-            if (strcasecmp($user['username'], $username) === 0) {
-                return new static($user);
-            }
-        }
-
-        return null;
+        return null;                 // вход по токену (API) не используется
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getId(): int|string
+    public function getId()
     {
-        return $this->id;
+        return $this->login;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getAuthKey(): string|null
+    /** Шаблонный layouts/main.php пишет «Выход (username)», отдаём ему логин. */
+    public function getUsername(): string
     {
-        return $this->authKey;
+        return $this->login;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function validateAuthKey($authKey): bool
+    public function getAuthKey()
     {
-        return $this->authKey === $authKey;
+        return null;                 // нужно только для «запомнить меня», оно выключено
+    }
+
+    public function validateAuthKey($authKey)
+    {
+        return false;
     }
 }

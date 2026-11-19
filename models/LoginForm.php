@@ -1,88 +1,71 @@
 <?php
-
-declare(strict_types=1);
-
 namespace app\models;
 
+use PDO;
+use PDOException;
 use Yii;
 use yii\base\Model;
-use yii\base\Security;
 
 /**
- * LoginForm is the model behind the login form.
- *
- * @property-read User|null $user
- *
+ * Вход теми же SQL-логином и паролем, что в Access.
+ * Проверка простая: пробуем подключиться к SQL Server. Получилось, значит, пароль верный.
+ * Блокировку после N неудачных попыток делает сам SQL Server (политика паролей логина).
+ */
 class LoginForm extends Model
 {
-    public string $username = '';
-    public string $password = '';
-    public bool $rememberMe = true;
-    private User|null $_user = null;
-    private bool $_userLoaded = false;
-    public function __construct(private readonly Security $security, $config = [])
-    {
-        parent::__construct($config);
-    }
+    public $login;
+    public $password;
 
-    /**
-     * @return array the validation rules.
-     */
-    public function rules(): array
+    public function rules()
     {
         return [
-            // username and password are both required
-            [['username', 'password'], 'required'],
-            // rememberMe must be a boolean value
-            ['rememberMe', 'boolean'],
-            // password is validated by validatePassword()
-            ['password', 'validatePassword'],
+            [['login', 'password'], 'required', 'message' => 'Заполните поле'],
+            ['login', 'trim'],
+            ['login', 'string', 'max' => 128],
+            ['password', 'validateSqlLogin'],
         ];
     }
 
-    /**
-     * Validates the password.
-     * This method serves as the inline validation for password.
-     *
-     * @param string $attribute the attribute currently being validated
-     * @param array $params the additional name-value pairs given in the rule
-     */
-    public function validatePassword(string $attribute, array|null $params): void
+    public function attributeLabels()
     {
-        if (!$this->hasErrors()) {
-            $user = $this->getUser();
+        return ['login' => 'Логин', 'password' => 'Пароль'];
+    }
 
-            if (!$user || !$this->security->validatePassword($this->password, $user->passwordHash)) {
-                $this->addError($attribute, 'Incorrect username or password.');
+    /** Аналог ValidationRule: если подключиться не вышло, пишем ошибку под полем пароля. */
+    public function validateSqlLogin($attribute)
+    {
+        if ($this->hasErrors()) {
+            return;
+        }
+        try {
+            $pdo = new PDO(Yii::$app->db->dsn, $this->login, $this->password);
+            // Берём имя так, как его видит SQL Server (регистр букв, домен и т.п.)
+            $this->login = $pdo->query('SELECT SUSER_SNAME()')->fetchColumn();
+        } catch (PDOException $e) {
+            // SQLSTATE 28000 / ошибка 18456 = неверный логин или пароль.
+            // Остальное (сеть, сервер не отвечает) пишем в лог и говорим человеку честно.
+            $badPassword = $e->getCode() === '28000' || (int)($e->errorInfo[1] ?? 0) === 18456;
+            if (!$badPassword) {
+                Yii::error('Вход ' . $this->login . ': ' . $e->getMessage(), __METHOD__);
+                $this->addError($attribute, 'Нет связи с сервером базы. Попробуйте позже или сообщите в IT.');
+            } else {
+                $this->addError($attribute, 'Неверный логин или пароль');
             }
         }
     }
 
-    /**
-     * Logs in a user using the provided username and password.
-     * @return bool whether the user is logged in successfully
-     */
     public function login(): bool
     {
-        if ($this->validate()) {
-            return Yii::$app->user->login($this->getUser(), $this->rememberMe ? 3600 * 24 * 30 : 0);
+        if (!$this->validate()) {
+            return false;
         }
+        $session = Yii::$app->session;
+        $enc     = Yii::$app->security->encryptByKey($this->password, Yii::$app->params['sessionKey']);
 
-        return false;
-    }
-
-    /**
-     * Finds user by [[username]]
-     *
-     * @return User|null
-     */
-    public function getUser(): User|null
-    {
-        if (!$this->_userLoaded) {
-            $this->_user = User::findByUsername($this->username);
-            $this->_userLoaded = true;
-        }
-
-        return $this->_user;
+        // Сначала login(): Yii меняет id сессии (защита от подмены), потом кладём данные.
+        $ok = Yii::$app->user->login(new User(['login' => $this->login]));
+        $session->set('sqlLogin', $this->login);
+        $session->set('sqlPass', base64_encode($enc));
+        return $ok;
     }
 }
