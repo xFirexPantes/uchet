@@ -70,7 +70,9 @@ $config = [
         ],
     ],
     'params' => $params,
-
+   'modules' => [
+        'zakupki' => ['class' => app\modules\zakupki\Module::class],
+    ],
     // Перед каждым запросом: если человек вошёл, берём его логин/пароль из сессии
     // и отдаём компоненту db. Само подключение откроется только при первом запросе к базе.
     'on beforeRequest' => function () use ($local) {
