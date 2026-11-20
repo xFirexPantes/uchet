@@ -3,6 +3,11 @@
 $local  = require __DIR__ . '/local.php';
 $params = require __DIR__ . '/params.php';
 $params['isTest'] = $local['isTest'];
+// Письма (components/LegacyMail.php). Как в Access: с не боевой базы письма идут только на тестовый адрес.
+$params['mailIsProdDb'] = strcasecmp($local['database'], 'TRXSQL') === 0;
+$params['mailTestTo']   = $local['mailTestTo'] ?? '';
+$params['mailFrom']     = $local['smtp']['from'] ?? 'uchet@localhost';
+$smtp = $local['smtp'] ?? [];
 
 // Строка подключения одна на оба логина. LoginTimeout = 5 секунд, чтобы при
 // недоступном сервере вход не висел полминуты.
@@ -55,6 +60,18 @@ $config = [
             'username' => $local['sysLogin'],
             'password' => $local['sysPassword'],
         ],
+        // Пока в local.php нет smtp.host, письма не уходят, а пишутся файлами в runtime/mail.
+        'mailer' => array_filter([
+            'class'            => yii\symfonymailer\Mailer::class,
+            'useFileTransport' => empty($smtp['host']),
+            'transport'        => empty($smtp['host']) ? null : [
+                'scheme'   => $smtp['scheme'] ?? 'smtp',
+                'host'     => $smtp['host'],
+                'port'     => $smtp['port'] ?? 25,
+                'username' => $smtp['user'] ?? '',
+                'password' => $smtp['pass'] ?? '',
+            ],
+        ], fn($v) => $v !== null),
         'errorHandler' => [
             'errorAction' => 'site/error',
         ],
@@ -69,10 +86,12 @@ $config = [
             'showScriptName'  => false,
         ],
     ],
-    'params' => $params,
-   'modules' => [
+    // Перенесённые разделы: адреса /zakupki/... (modules/zakupki)
+    'modules' => [
         'zakupki' => ['class' => app\modules\zakupki\Module::class],
     ],
+    'params' => $params,
+
     // Перед каждым запросом: если человек вошёл, берём его логин/пароль из сессии
     // и отдаём компоненту db. Само подключение откроется только при первом запросе к базе.
     'on beforeRequest' => function () use ($local) {

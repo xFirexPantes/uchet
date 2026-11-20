@@ -154,6 +154,7 @@ $this->registerJsFile('@web/js/colresize.js');
 $this->registerCssFile('@web/css/colresize.css');
 
 $panelUrl = Json::encode(Url::to(['panel']));
+$schetUrl = Json::encode(Url::to(['schet/view']));
 $typeSch  = (int)$filter->typeSch;
 $this->registerJs(<<<JS
 const tbl = document.getElementById('vhList'), body = tbl.tBodies[0];
@@ -249,10 +250,11 @@ function select(tr) {
 }
 body.addEventListener('click', e => { const tr = e.target.closest('tr'); if (tr) select(tr); });
 
-// --- Двойной щелчок → карточка счёта (frmMassInputSch). Пока заглушка.
+// --- Двойной щелчок → карточка счёта (xListSch_DblClick): ID > 0 frmMassInputSch, ID < 0 frmScetaDetal.
+// В Access карточка открывалась поверх списка (acDialog); здесь отдельной вкладкой.
 body.addEventListener('dblclick', e => {
     const tr = e.target.closest('tr'); if (!tr) return;
-    alert('Карточка счёта ID ' + tr.dataset.id + ' будет следующим экраном (frmMassInputSch).');
+    window.open($schetUrl + '?id=' + tr.dataset.id, 'schet' + tr.dataset.id);
 });
 
 // --- Как в Access: сортировка по дате (LngDta) по убыванию, выбрана первая строка
@@ -262,3 +264,4 @@ if (body.rows.length) select(body.rows[0]); else { vis('ActBut', false); vis('Re
 // --- Form_Timer: обновить список раз в 30 минут
 setTimeout(() => location.reload(), 30 * 60 * 1000);
 JS);
+echo $this->render('@app/views/access/_help');

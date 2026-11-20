@@ -9,23 +9,9 @@ use yii\bootstrap5\NavBar;
 use yii\helpers\Html;
 
 $items = [
-    [
-        'label' => 'Home',
-        'url' => ['/site/index'],
-    ],
-    [
-        'label' => 'About',
-        'url' => ['/site/about'],
-    ],
-    [
-        'label' => 'Contact',
-        'url' => ['/site/contact'],
-    ],
-    [
-        'label' => 'Login',
-        'url' => ['/site/login'],
-        'visible' => Yii::$app->user->isGuest,
-    ],
+
+['label' => 'Главная', 'url' => ['/site/index']],
+['label' => 'Закупки', 'url' => ['/zakupki/vh-schet/index']],
     [
         'label' => 'Logout (' . Html::encode(Yii::$app->user->identity?->username ?? '') . ')',
         'url' => ['/site/logout'],

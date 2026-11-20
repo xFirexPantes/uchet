@@ -1,0 +1,43 @@
+/* Общий вид перенесённых форм Access (views/access/_form.php, _grid.php).
+   Элементы стоят абсолютно по координатам из SaveAsText. */
+.access-form { position:relative; font:11px Tahoma, sans-serif; margin:0 auto; overflow:hidden; }
+.access-form > * { position:absolute; box-sizing:border-box; }
+.a-lbl { white-space:pre-line; line-height:1.1; overflow:hidden; }
+.a-frame { border:1px solid #fff; border-right-color:#555; border-bottom-color:#555; }
+.a-txt input, .a-txt textarea { width:100%; height:100%; box-sizing:border-box; border:1px inset #999; background:#fff;
+    font:inherit; color:inherit; text-align:inherit; padding:0 2px; resize:none; }
+.a-txt.transp input, .a-txt.transp textarea { background:transparent; border-color:transparent; }
+.a-combo input { padding-right:16px; }
+.a-combo span { position:absolute; right:1px; top:1px; bottom:1px; width:14px; background:#ece9d8; font-size:8px;
+    display:flex; align-items:center; justify-content:center; color:#666; }
+.a-btn { background:#ece9d8; border:1px outset #ccc; font:inherit; padding:0; display:flex; align-items:center;
+    justify-content:center; color:#000; text-decoration:none; cursor:pointer; white-space:pre-line; line-height:1.1; text-align:center; }
+.a-btn:disabled { color:#999; cursor:default; }
+.a-btn.on { border-style:inset; background:#dcd8c4; }
+.a-slot > .a-btn { position:absolute; inset:0; }
+.a-opt { margin:0; }
+.a-list, .a-slot { overflow:auto; background:#fff; border:1px inset #999; }
+.a-slot:has(> .a-btn) { border:0; background:none; overflow:visible; }
+/* подформа в режиме таблицы */
+.a-grid { border-collapse:collapse; font:12px Arial, sans-serif; table-layout:fixed; }
+.a-grid th { position:sticky; top:0; background:#ece9d8; font-weight:normal; padding:1px 3px; border:1px solid #c0c0c0;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; z-index:1; }
+.a-grid td { padding:0 3px; border:1px solid #c0c0c0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; height:17px; }
+.a-grid td input[type=checkbox] { margin:0; }
+.a-grid tr.sel td { background:#316ac5 !important; color:#fff !important; }
+.a-select select { width:100%; height:100%; box-sizing:border-box; font:inherit; border:1px inset #999; padding:0; }
+.a-txt input[type=date] { padding:0 2px; }
+.a-txt .ed.saving { background:#ffffe0; }
+.a-txt .ed.err { background:#ffd0d0; }
+.a-txt input[type=date]::-webkit-calendar-picker-indicator { margin:0; padding:0; width:10px; }
+/* окно выбора (web/js/picker.js), как диалоговая форма Access */
+.picker-ov { position:fixed; inset:0; background:rgba(0,0,0,.25); z-index:1000; display:flex; align-items:center; justify-content:center; }
+.picker { background:#ece9d8; border:1px solid #0a246a; box-shadow:2px 2px 8px rgba(0,0,0,.4); font:11px Tahoma, sans-serif; }
+.picker-title { background:#0a246a; color:#fff; padding:3px 4px; display:flex; justify-content:space-between; align-items:center; font-weight:bold; }
+.picker-x { background:#ece9d8; border:1px outset #ccc; font-size:10px; width:18px; height:16px; padding:0; cursor:pointer; }
+.picker-top { display:flex; align-items:center; gap:6px; padding:4px; font-size:16px; }
+.picker-top input { flex:1; font-size:16px; border:1px inset #999; }
+.picker-list { height:287px; overflow:auto; background:#fff; border:1px inset #999; margin:0 4px; }
+.picker-foot { display:flex; gap:4px; padding:4px; }
+.picker-foot .a-btn { width:38px; height:38px; font-size:16px; }
+.picker-foot .a-btn[data-b=cls] { margin-left:auto; }
