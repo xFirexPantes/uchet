@@ -61,6 +61,15 @@ $slots = [
     'butDob'      => $btn('butDob', 'Добавить позицию в счёт', '＋'),
     // ✎ Кнопка15: правка позиции в окне frmPosInput (скрипт ниже), у открытого счёта и при праве править
     'Кнопка15'    => $btn('Кнопка15', 'Изменить позицию', '✎'),
+    // Только просмотр, работают и без права править: история цен позиции (frmChgPredShcetaHistory 0), история дат поставки (frmShowLogSklad) и переписка (frmSchPost)
+    'btnShowLogPrice' => '<button type="button" class="a-btn" id="btnShowLogPrice" title="История цены и кол-ва выбранной позиции" style="font-weight:bold">Ист</button>',
+    'btnShowLogDtaPost' => '<button type="button" class="a-btn" id="btnShowLogDtaPost" title="История даты поставки выбранной позиции" style="font-weight:bold">Ист</button>',
+    'MoveDate'        => $id > 0
+        ? '<button type="button" class="a-btn" id="MoveDate" title="Перенос даты счета">Перенос поставки</button>'
+        : '<button type="button" class="a-btn" disabled title="Перенос даты: счёт ещё не сохранён">Перенос поставки</button>',
+    'MailFormBtn'     => $id > 0
+        ? '<button type="button" class="a-btn" id="MailFormBtn" title="Переписка по счёту" style="font-size:20px">✉</button>'
+        : '<button type="button" class="a-btn" disabled title="Переписка: счёт ещё не сохранён" style="font-size:20px">✉</button>',
     'ShowHiddenBut' => Html::a('⋯', Url::current(['all' => $all ? null : 1]), ['class' => 'a-btn' . ($all ? ' on' : ''), 'title' => 'Показать / спрятать скрытые столбцы позиций']),
 ];
 $kurs = $d['calc']['Kurs'];
@@ -98,6 +107,33 @@ $this->registerJsFile('@web/js/access-dialog.js');
 ]) ?>
 </div>
 <?= $this->render('_script', ['id' => $id, 'resUrl' => Url::to(['res'])]) ?>
+<?php
+$chgUrl  = \yii\helpers\Json::encode(Url::to(['vh-dlg/chg-hist']));
+$postUrl = \yii\helpers\Json::encode(Url::to(['vh-dlg/sch-post']));
+$logUrl  = \yii\helpers\Json::encode(Url::to(['vh-dlg/show-log']));
+$moveUrl = \yii\helpers\Json::encode(Url::to(['vh-dlg/move-date', 'id' => $id]));
+$this->registerJs(<<<JS
+// btnShowLogPrice_Click: выбранная позиция (нет выбора — первая, как текущая запись) → «Изменение позиции счёта», Args «0,AllID,ShcID»
+document.getElementById('btnShowLogPrice')?.addEventListener('click', () => {
+    const tb = document.querySelector('#pos tbody'), tr = tb?.querySelector('tr.sel') || tb?.rows[0];
+    if (!tr) return;
+    accessDialog($chgUrl + '?' + new URLSearchParams({ rgm: 0, all: 0, allId: tr.dataset.id, shcId: $id }), 1040, 332);
+});
+// btnShowLogDtaPost_Click: frmShowLogSklad, OpenArgs «DtaPost», AllID выбранной позиции
+document.getElementById('btnShowLogDtaPost')?.addEventListener('click', () => {
+    const tb = document.querySelector('#pos tbody'), tr = tb?.querySelector('tr.sel') || tb?.rows[0];
+    if (!tr) return;
+    accessDialog($logUrl + '?' + new URLSearchParams({ allId: tr.dataset.id }), 333, 242);
+});
+// MoveDate_Click: frmFndIsp4Nakl 2 (KodNullEl = ID счёта); после переноса позиции перечитываются
+document.getElementById('MoveDate')?.addEventListener('click', async () => {
+    const r = await accessDialog($moveUrl, 664, 348);
+    if (r.reload) location.reload();
+});
+// MailFormBtn_Click: frmSchPost по счёту
+document.getElementById('MailFormBtn')?.addEventListener('click', () => accessDialog($postUrl + '?id=$id', 1078, 493));
+JS);
+?>
 <?php if ($allowEd): ?>
 <?= $this->render('_edit', ['id' => $id]) ?>
 <?php endif ?>

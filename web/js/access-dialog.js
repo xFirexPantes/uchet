@@ -7,6 +7,10 @@
  */
 (function () {
     window.accessDialog = function (url, width, height) {
+        // из диалога (iframe) новое окно открывается у родителя — во весь экран, а не внутри маленького iframe
+        try {
+            if (window.parent !== window && window.parent.accessDialog) return window.parent.accessDialog(new URL(url, location.href).href, width, height);
+        } catch (e) { /* другой сайт — открываем у себя */ }
         return new Promise(resolve => {
             const ov = document.createElement('div');
             ov.className = 'picker-ov';
@@ -47,7 +51,10 @@
             function onMsg(e) {
                 if (e.source === fr.contentWindow && e.data && e.data.type === 'access-dialog') done(e.data.reload, e.data.value);
             }
-            function onKey(e) { if (e.key === 'Escape') done(false); }
+            function onKey(e) {                                     // Esc закрывает только верхнее окно
+                if (e.key !== 'Escape' || document.querySelector('.mb-ov')) return;
+                if ([...document.querySelectorAll('.picker-ov')].pop() === ov) done(false);
+            }
             window.addEventListener('message', onMsg);
             document.addEventListener('keydown', onKey);
         });

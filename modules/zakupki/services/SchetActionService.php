@@ -117,6 +117,22 @@ class SchetActionService
     }
 
     /** SetNDS2Str_Click (ТЗ 670): ставка НДС счёта всем строкам → CommonStartSP1(ID, "dbo.xp_frmMassInputUpdNDSPos", 0). */
+    /**
+     * InUEtxt_DblClick: только у пустого счёта; валюта из окна frmfndDezWorks 61 (xp_GetUE 0, BoundColumn 1),
+     * затем CommonStartSP6(ID, "dbo.xp_frmMassInputSchUpdUE", код, 0, , 255): 1 — карточка перечитывается.
+     */
+    public function setUE(int $id, ?string $ue): array
+    {
+        if ($this->save->exec('dbo.xp_LstMassInputRowS1', [$id])->queryOne()) return ['ok' => true];
+        if ($ue === null || $ue === '') return ['pick' => ['form' => 'frmfndDezWorks', 'mode' => 61, 'field' => 'ue']];
+        return match ((int)LegacySp::sp6($id, 'dbo.xp_frmMassInputSchUpdUE', mb_substr($ue, 0, 255), 0, 255)) {
+            1 => ['ok' => true, 'reload' => true],
+            2 => ['ok' => false, 'msg' => 'У Вас нет прав на данное действие'],
+            3 => ['ok' => false, 'msg' => 'Нельзя изменить валюту у заполненного счёта'],
+            default => ['ok' => false, 'msg' => 'Не удалось изменить валюту'],
+        };
+    }
+
     public function ndsAll(int $id, array $answers): array
     {
         $rec = $this->save->rec($id);

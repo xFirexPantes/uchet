@@ -270,6 +270,7 @@ class SchetController extends BaseController
             'TakeMe'    => $svc->takeMe($id, $r->post('on') === '1', $r->post('date'), $r->post('time')),
             'flgFZ275'  => $svc->fz275($id, (int)$r->post('num') ?: null),
             'SetNDS2Str'=> $svc->ndsAll($id, $ans),
+            'InUEtxt'   => $svc->setUE($id, $r->post('ue')),
             'butExit'   => $svc->close($id, $ans),
             'PthDel'    => $svc->pathDel($id, false, $ans),
             'AdditPthDel' => $svc->pathDel($id, true, $ans),

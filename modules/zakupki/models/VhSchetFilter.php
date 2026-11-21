@@ -12,6 +12,7 @@ class VhSchetFilter extends Model
     public $dateS;          // txtDateS
     public $datePo;         // txtDatePo
     public $nsch = '';      // cboNCh, № счета (ищется по части)
+    public $firma = '';     // cboFirma: продавец из окна «фильтр по счетам» (frmfltSch), пусто — все
     public $allSch = 0;     // AllSch: 0 = открытые, 1 = все
     public $typeSel = 1;    // TypeSel: 1 = НЕ давальческое, 2 = давальческое, 3 = не важно
     public $typeSch = 0;    // GrpTypeSch: 0 = элементы, 1 = детали
@@ -36,6 +37,7 @@ class VhSchetFilter extends Model
             ['datePo', 'compare', 'compareAttribute' => 'dateS', 'operator' => '>=',   // строки Y-m-d сравниваются верно
                 'skipOnEmpty' => true, 'message' => 'Неправильно указаны даты.'],
             ['nsch', 'trim'],
+            ['firma', 'string', 'max' => 100],
             ['nsch', 'string', 'max' => 18],          // в процедуре varchar(20), плюс два '%'
             [['allSch'], 'boolean'],
             ['typeSel', 'in', 'range' => [1, 2, 3]],

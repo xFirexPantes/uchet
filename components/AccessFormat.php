@@ -29,6 +29,9 @@ class AccessFormat
             $date = "$m[3].$m[2].$m[1]";
             $time = isset($m[4]) ? "$m[4]:$m[5]" : '00:00';
             if ($fmt === 'Short Time') return $time;
+            if ($fmt !== null && str_contains($fmt, 'hh')) {                  // dd.mm.yy hh:nn:ss и т. п.
+                return (str_contains($fmt, 'yyyy') ? $date : "$m[3].$m[2]." . substr($m[1], 2)) . " $time" . (str_contains($fmt, 'ss') ? ':' . ($m[6] ?? '00') : '');
+            }
             if ($fmt === 'Short Date' || str_starts_with((string)$fmt, 'dd')) return $date;
             if ($date === '30.12.1899') return $time . ':' . $m[6];          // в Access «только время»
             return $time === '00:00' ? $date : "$date $time:" . ($m[6] ?? '00');  // General Date

@@ -58,15 +58,36 @@ class BufService
         }
     }
 
-    /** MnlKol_DblClick → UpdKolDetal4Buf(0, 0, IDStr, vl): 1 — ок, 3 — больше, чем в техкарте. Текста функции пока нет. */
+    /**
+     * MnlKol_DblClick → UpdKolDetal4Buf(0, 0, IDStr, vl) = dbo.xp_ProdPlanUpdBufKol (AbsId, OpId, ID varchar(255), Vl, res OUT):
+     * 1 — ок (MnlSm = PrcRub · Vl), 3 — больше, чем в техкарте, иначе «Не удалось изменить количество».
+     */
     public function kol(string $idStr, int $vl): array
     {
-        return ['ok' => false, 'msg' => 'Изменение количества ещё не перенесено (нужна функция UpdKolDetal4Buf)'];
+        $r = $this->upd('dbo.xp_ProdPlanUpdBufKol', $idStr, $vl);
+        return match ($r) {
+            1 => ['ok' => true],
+            3 => ['ok' => false, 'msg' => 'Введённое значение превышает количество в техкарте'],
+            default => ['ok' => false, 'msg' => 'Не удалось изменить количество'],
+        };
     }
 
-    /** MnlSm_DblClick → UpdSmDetal4Buf(0, 0, IDStr, Sm) > 0 — ок. Текста функции пока нет. */
+    /** MnlSm_DblClick → UpdSmDetal4Buf(0, 0, IDStr, Sm) = dbo.xp_ProdPlanUpdBufSm (…, Sm money, res OUT) > 0 — ок (PrcOpt пересчитывается). */
     public function sm(string $idStr, float $sm): array
     {
-        return ['ok' => false, 'msg' => 'Изменение суммы ещё не перенесено (нужна функция UpdSmDetal4Buf)'];
+        return $this->upd('dbo.xp_ProdPlanUpdBufSm', $idStr, $sm) > 0 ? ['ok' => true] : ['ok' => false, 'msg' => 'Не удалось изменить сумму'];
+    }
+
+    /** Вызов как в VBA: AbsId = 0, OpId = 0, ID (varchar 255), значение (adCurrency), res OUTPUT. Ошибка — MsgBox, результат 0. */
+    private function upd(string $proc, string $idStr, $vl): int
+    {
+        try {
+            return (int)Yii::$app->db->createCommand(
+                "SET NOCOUNT ON; DECLARE @id varchar(255) = ?, @v money = ?, @r tinyint; EXEC $proc 0, 0, @id, @v, @r OUTPUT; SELECT @r",
+                [1 => mb_substr($idStr, 0, 255), 2 => (string)$vl])->queryScalar();
+        } catch (\yii\db\Exception $e) {
+            Yii::error("$proc: " . $e->getMessage(), __METHOD__);
+            return 0;
+        }
     }
 }

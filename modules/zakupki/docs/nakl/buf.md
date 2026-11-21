@@ -1,7 +1,7 @@
 ---
 title: Составляющие детали на буферный склад
 access_form: ProdPlanSnd2Buf
-procs: [dbo.xp_ProdPlanIsReadySostDetal, dbo.xp_ProdPlanSnd2BufRS, dbo.xp_ProdPlanUpdChkBuf, dbo.xp_ProdPlanAddFakeNaklNew]
+procs: [dbo.xp_ProdPlanIsReadySostDetal, dbo.xp_ProdPlanSnd2BufRS, dbo.xp_ProdPlanUpdChkBuf, dbo.xp_ProdPlanUpdBufKol, dbo.xp_ProdPlanUpdBufSm, dbo.xp_ProdPlanAddFakeNaklNew]
 ---
 
 # Составляющие детали на буферный склад
@@ -14,10 +14,12 @@ procs: [dbo.xp_ProdPlanIsReadySostDetal, dbo.xp_ProdPlanSnd2BufRS, dbo.xp_ProdPl
 «ЦенаОпт,$», «Сумма, руб.», «Кол».
 
 ## Как пользоваться
-1. Щелчок по флажку отмечает строку или снимает отметку. Уже отправленную строку отметить нельзя.
+1. Щелчок по флажку снимает отметку (см. «Как в Access» ниже). Уже отправленную строку менять нельзя.
 2. **⇩ Отправить на буферный склад**: после вопроса отмеченные строки уходят на буферный склад.
    Итог по каждой строке виден в столбце «Состояние».
-3. **✕** или Esc закрывает окно, накладная перечитывает строки.
+3. Двойной щелчок по «Кол»: новое количество (целое). Больше, чем в техкарте, нельзя. Сумма пересчитывается по цене.
+4. Двойной щелчок по «Сумма, руб.»: новая сумма, «ЦенаОпт,$» пересчитывается по курсу.
+5. **✕** или Esc закрывает окно, накладная перечитывает строки.
 
-## Пока не работает
-Двойной щелчок по «Кол» и «Сумма, руб.» (ручная правка количества и суммы): ждём функции Access UpdKolDetal4Buf и UpdSmDetal4Buf.
+## Как в Access
+Щелчок по флажку в Access только снимает отметку: процедура xp_ProdPlanUpdChkBuf всегда пишет 0. В вебе так же.

@@ -20,6 +20,8 @@ use Yii;
  *   (в cols и key вместо имени поля можно дать номер столбца с 0 — как Column(N) у списка Access,
  *    когда имена столбцов процедуры не известны; BoundColumn = N+1)
  *   noHead  — у списка нет заголовков (ColumnHeads = Нет)
+ *   noFind  — поля поиска нет (Me!fnd.Visible = False): процедуре идут только args, список сразу полный
+ *   extra   — последний параметр процедуры приходит с экрана (accessPicker(form, mode, extra)), например даты фильтра
  *   free    — текст вопроса, если в списке ничего не нашлось, а введённое можно взять как есть
  *             (fnd_AfterUpdate: «… нет в списке. Всё равно использовать?»), тогда key = text = строка поиска
  */
@@ -44,15 +46,16 @@ class Picker
     }
 
     /** Строки списка для строки поиска. */
-    public static function rows(array $m, string $st): array
+    public static function rows(array $m, string $st, string $extra = ''): array
     {
         if ($st !== '' && mb_strlen($st) < ($m['minLen'] ?? 0)) {
             return [];
         }
-        $vals = array_merge([$st . '%'], array_values($m['args'] ?? []));
+        $vals = empty($m['noFind']) ? array_merge([$st . '%'], array_values($m['args'] ?? [])) : array_values($m['args'] ?? []);
+        if (!empty($m['extra'])) $vals[] = mb_substr($extra, 0, 100);
         $bind = [];
         foreach ($vals as $i => $v) $bind[$i + 1] = $v;
-        $rows = Yii::$app->db->createCommand('SET NOCOUNT ON; EXEC ' . $m['proc'] . ' ' . implode(', ', array_fill(0, count($vals), '?')), $bind)->queryAll();
+        $rows = Yii::$app->db->createCommand('SET NOCOUNT ON; EXEC ' . $m['proc'] . ($vals ? ' ' . implode(', ', array_fill(0, count($vals), '?')) : ''), $bind)->queryAll();
         $out = [];
         foreach ($rows as $r) {
             $byNum = array_values($r);

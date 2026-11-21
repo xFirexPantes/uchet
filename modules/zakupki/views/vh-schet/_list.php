@@ -31,7 +31,7 @@ $cols = [
     ['Comm',      'Комментарий', null,       null,        133, ''],
 ];
 // Скрытые поля для панели (в Access ListSubItems 13, 15, 17-26)
-$hidden = ['PredShcID', 'pth', 'OstOPl', 'SmSch', 'WhoPick', 'Mails', 'Diff', 'Acts', 'Reps', 'InUEtxt', 'Comm', 'Prim', 'OplPrc'];
+$hidden = ['PredShcID', 'NSch', 'TP', 'pth', 'OstOPl', 'SmSch', 'WhoPick', 'Mails', 'Diff', 'Acts', 'Reps', 'InUEtxt', 'Comm', 'Prim', 'OplPrc'];
 ?>
 <table id="vhList" class="vh-table" style="width:<?= array_sum(array_column($cols, 4)) ?>px">
     <colgroup>

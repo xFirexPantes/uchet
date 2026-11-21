@@ -3,12 +3,34 @@
  * Режимы описаны на сервере: components/Picker.php.
  *
  *   accessPicker('frmfndFirm', 50).then(sel => { if (sel) ... sel.key, sel.text });
+ *   accessPicker('frmfndHolding', 1, '2026010120261120') — третий параметр уходит в процедуру последним (режим с extra)
  *
  * Поиск по мере набора (fnd_Change), двойной щелчок или ✓ — выбрать (xList_DblClick / Accpt_Click),
  * ✕ или Esc — закрыть без выбора (KodNullEl остаётся пустым). Столбцы раздвигаются (colResize).
  * Режим с free: если ничего не нашлось, Enter/✓ спрашивает и возвращает введённый текст ({free: true}).
  */
-window.accessPicker = function (form, mode) {
+// Свои стили окна выбора: экран может не подключать access-form.css (так было во «Входящих счетах» — окно «Долги» разваливалось)
+(function () {
+    if (document.getElementById('picker-css')) return;
+    const st = document.createElement('style'); st.id = 'picker-css';
+    st.textContent =
+        '.picker-ov{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:1000;display:flex;align-items:center;justify-content:center}' +
+        '.picker{background:#ece9d8;border:1px solid #0a246a;box-shadow:2px 2px 8px rgba(0,0,0,.4);font:11px Tahoma,sans-serif;color:#000}' +
+        '.picker-title{background:#0a246a;color:#fff;padding:3px 4px;display:flex;justify-content:space-between;align-items:center;font-weight:bold}' +
+        '.picker-x{background:#ece9d8;border:1px outset #ccc;font-size:10px;width:18px;height:16px;padding:0;cursor:pointer}' +
+        '.picker-top{display:flex;align-items:center;gap:6px;padding:4px;font-size:16px}' +
+        '.picker-top input{flex:1;font-size:16px;border:1px inset #999}' +
+        '.picker-list{height:287px;overflow:auto;background:#fff;border:1px inset #999;margin:0 4px}' +
+        '.picker-foot{display:flex;gap:4px;padding:4px}' +
+        '.picker .a-btn{background:#ece9d8;border:1px outset #ccc;padding:0;display:flex;align-items:center;justify-content:center;color:#000;cursor:pointer;width:38px;height:38px;font-size:16px;position:static}' +
+        '.picker .a-btn[data-b=cls]{margin-left:auto}' +
+        '.picker .a-grid{border-collapse:collapse;font:12px Arial,sans-serif;table-layout:fixed}' +
+        '.picker .a-grid th{position:sticky;top:0;background:#ece9d8;font-weight:normal;padding:1px 3px;border:1px solid #c0c0c0}' +
+        '.picker .a-grid td{padding:0 3px;border:1px solid #c0c0c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:17px;cursor:default}' +
+        '.picker .a-grid tr.sel td{background:#316ac5;color:#fff}';
+    (document.head || document.documentElement).appendChild(st);
+})();
+window.accessPicker = function (form, mode, extra) {
     const q = new URLSearchParams({ form, mode });
     return fetch('/picker/mode?' + q).then(r => r.json()).then(m => new Promise(resolve => {
         const ov = document.createElement('div');
@@ -34,6 +56,7 @@ window.accessPicker = function (form, mode) {
             const th = document.createElement('th'); th.textContent = c[1]; tbl.tHead.rows[0].appendChild(th);
         });
         if (m.noHead) tbl.tHead.style.display = 'none';
+        if (m.noFind) $('.picker-top').style.display = 'none';             // Me!fnd.Visible = False
         window.colResize && colResize(tbl, 'picker.' + form + '.' + mode);
 
         let rows = [], sel = -1, timer;
@@ -51,7 +74,7 @@ window.accessPicker = function (form, mode) {
             body.rows[i]?.scrollIntoView({ block: 'nearest' });
         }
         function load() {
-            fetch('/picker/list?' + new URLSearchParams({ form, mode, q: fnd.value })).then(r => r.json()).then(d => { rows = d; draw(); });
+            fetch('/picker/list?' + new URLSearchParams(Object.assign({ form, mode, q: fnd.value }, extra != null ? { x: extra } : {}))).then(r => r.json()).then(d => { rows = d; draw(); });
         }
         function done(r) {
             document.removeEventListener('keydown', keys, true);
@@ -85,7 +108,7 @@ window.accessPicker = function (form, mode) {
         $('[data-b=cls]').onclick = () => done(null);
         $('[data-b=ok]').onclick = () => { if (sel >= 0) done(rows[sel]); else freeText(); };
         $('[data-b=clr]').onclick = () => { fnd.value = ''; rows = []; draw(); fnd.focus(); };   // Del_Click: очистить выборку
-        fnd.focus();
+        if (!m.noFind) fnd.focus();
         load();                                                // Form_Open: сразу полный список
     }));
 };

@@ -81,6 +81,9 @@ $this->registerJs(<<<JS
         act(el.dataset.field === 'AdditPth' ? 'AdditPthDel' : 'PthDel');
     }));
 
+    // --- InUEtxt_DblClick: смена валюты у пустого счёта (окно «Валюта», frmfndDezWorks 61)
+    document.getElementById('InUEtxt')?.addEventListener('dblclick', () => act('InUEtxt'));
+
     // --- Флажки и кнопки-действия. Вопросы сервера (ask) задаём confirm и повторяем запрос с ответом.
     function act(name, extra = {}, answers = {}) {
         return post($actUrl, Object.assign({ act: name, answers }, extra)).then(async res => {

@@ -11,4 +11,12 @@ return [
         'cols' => [['Firma', 'Заказ', 270]], 'key' => 'UchetID',
         'width' => 295,     // ширина формы: 4425 твипов
     ],
+    // 9: «Выбор покупателя» для «Долгов» во «Входящих счетах» (frmStat.GetPartSums_Click):
+    // FillList Case 9 = exec dbo.xp_GetInnerFirms без параметров, поля поиска нет; выбор — UchetID (litem.Key = "k" & UchetID)
+    9 => [
+        'title' => 'Выбор покупателя', 'label' => '',
+        'proc' => 'dbo.xp_GetInnerFirms', 'noFind' => true,
+        'cols' => [['Firma', 'Фирма', 270]], 'key' => 'UchetID',
+        'width' => 295,     // ширина формы: 4425 твипов
+    ],
 ];

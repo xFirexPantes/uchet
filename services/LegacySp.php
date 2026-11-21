@@ -60,7 +60,11 @@ class LegacySp
             [mb_substr($dta, 0, $ln)], $proc, $dflt, 'int');
     }
 
-    /** CommonStartSP6, prms = 0: (ID int, Dta nvarchar(ln), res OUTPUT int). Текст обрезается до ln, как Left$. */
+    /**
+     * CommonStartSP6, prms = 0: (ID int, Dta nvarchar(ln), res OUTPUT int). Текст обрезается до ln, как Left$.
+     * VBA: CommonStartSP6(ID, Nme, Dta, Dflt = 0, prms = 0, ln = 50, TimeOut = 30, Warn = 0): ln — 6-й параметр, 7-й — таймаут,
+     * Warn = 1 — сообщение «Текст будет уменьшен до ln символов» (его показывает экран).
+     */
     public static function sp6(int $id, string $proc, string $dta, int $dflt = 0, int $ln = 50): int
     {
         return (int)self::out("DECLARE @r int; EXEC $proc ?, ?, @r OUTPUT; SELECT @r",

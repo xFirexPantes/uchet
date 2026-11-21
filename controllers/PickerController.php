@@ -22,10 +22,10 @@ class PickerController extends BaseController
     }
 
     /** Строки списка по строке поиска (fnd_Change → FillList). */
-    public function actionList(string $form, int $mode, string $q = '')
+    public function actionList(string $form, int $mode, string $q = '', string $x = '')
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
         $m = Picker::mode($form, $mode) ?? throw new NotFoundHttpException('Нет такого режима');
-        return Picker::rows($m, mb_substr($q, 0, 100));
+        return Picker::rows($m, mb_substr($q, 0, 100), $x);
     }
 }
