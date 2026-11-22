@@ -22,6 +22,23 @@
     if (!tbl) return;   // на странице нет списка счетов (другой вид экрана) — скрипт не нужен
     const body = tbl.tBodies[0];
     const byId = id => document.getElementById(id);
+    // Современный вид (Bootstrap-раскладка) и вид «как в Access» используют одну разметку по id,
+    // но по-разному показывают элементы и подсвечивают суммы — здесь решаем, какой стиль применить.
+    const MODERN = !!document.querySelector('.vh-modern');
+    // Вкладки панели современного вида. Bootstrap CSS подключён, а JS-плагины — нет
+    // (они тянут jQuery), поэтому переключение вкладок делаем здесь: те же классы, что у Bootstrap.
+    if (MODERN) {
+        const tabs = document.querySelector('.vh-modern-tabs');
+        tabs?.addEventListener('click', e => {
+            const btn = e.target.closest('[data-bs-target]'); if (!btn) return;
+            e.preventDefault();
+            tabs.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const box = tabs.parentElement;
+            box.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show', 'active'));
+            box.querySelector(btn.dataset.bsTarget)?.classList.add('show', 'active');
+        });
+    }
     // Видимые колонки списков: из ColumnWidths в Access (ширина 0 = скрытая колонка)
     const show = { lstOplPrc: [0, 1, 3], lstOplPrcToDo: [1, 2, 3, 4, 5], lstPlat: [1, 2, 3, 5] };
 
@@ -38,27 +55,63 @@
         tbl.querySelectorAll('th').forEach(th => th.classList.remove('asc', 'desc'));
         tbl.tHead.rows[0].cells[col].classList.add(desc ? 'desc' : 'asc');
     }
+    // --- Клик по заголовку. xListSch_ColumnClick: колонка «Оплата» (hd = 12) — не сортировка,
+    // а RemoveDataSch: скрыть строки с заполненным HowOpl (оставить только неоплаченные), OnlyNeopl.
+    // Повторный щелчок возвращает полный список.
+    const COL_OPL = 11;                                   // индекс колонки «Оплата» в _list.php
+    let onlyNeopl = false;
+    function removeDataSch() {
+        onlyNeopl = !onlyNeopl;
+        let first = null;
+        for (const r of body.rows) {
+            const paid = (r.cells[COL_OPL].dataset.sort || '').trim() !== '';
+            r.hidden = onlyNeopl && paid;
+            if (!r.hidden && !first) first = r;
+        }
+        tbl.tHead.rows[0].cells[COL_OPL].classList.toggle('neopl', onlyNeopl);
+        // выбранная строка могла скрыться — выбираем первую видимую, как после FillListSch
+        const sel = body.querySelector('tr.sel');
+        if (first && (!sel || sel.hidden)) select(first);
+        else if (!first) { vis('ActBut', false); vis('RepBut', false); }
+    }
     tbl.tHead.addEventListener('click', e => {
         if (e.target.classList.contains('rsz') || tbl.dataset.resizing) return;
-        const th = e.target.closest('th'); if (th) sortBy(+th.dataset.col, th.classList.contains('asc'));
+        const th = e.target.closest('th'); if (!th) return;
+        if (+th.dataset.col === COL_OPL) { removeDataSch(); return; }
+        sortBy(+th.dataset.col, th.classList.contains('asc'));
     });
 
-    // --- Раздвигание столбцов (общий web/js/colresize.js)
-    colResize(tbl, 'vhSchet.list');
+    // --- Раздвигание столбцов (общий web/js/colresize.js). Ключ разный: в современном виде таблица
+    // в узкой колонке и ширины подбираются заново, иначе ширины из вида «как в Access» её раздувают.
+    colResize(tbl, MODERN ? 'vhSchet.list.modern' : 'vhSchet.list');
     // usersrt: сортировка по пользователю (FillListSch(1): SortKey = 12, по возрастанию)
     byId('usersrt')?.addEventListener('click', () => sortBy(10, false));
 
     // --- Списки панели (RowSource у ListBox)
+    // Счётчик на вкладке современного вида: сколько строк в списке. В Access это не показывалось,
+    // поэтому в виде «как в Access» счётчиков нет.
+    function count(id, n) {
+        if (!MODERN) return;
+        const el = document.querySelector('[data-count="' + id + '"]');
+        if (el) el.textContent = n;
+    }
     function fill(id, rows) {
         const t = byId(id); if (!t) return; t.innerHTML = '';
         rows.forEach(r => {
             const tr = t.insertRow(); tr.dataset.row = JSON.stringify(r);
             show[id].forEach(i => tr.insertCell().textContent = r[i] ?? '');
         });
+        if (MODERN && !rows.length) emptyRow(t, show[id].length);
+        count(id, rows.length);
+    }
+    // Пустая вкладка в современном виде: в Access список просто пустой, здесь — понятная подпись
+    function emptyRow(t, span) {
+        const tr = t.insertRow(), td = tr.insertCell();
+        td.colSpan = span || 1; td.className = 'text-secondary fst-italic'; td.textContent = 'нет данных';
     }
     // lstOplPrc_AfterUpdate: CommOpl = скрытая колонка 4 выбранной оплаты
     byId('lstOplPrc')?.addEventListener('click', e => {
-        const tr = e.target.closest('tr'); if (!tr) return;
+        const tr = e.target.closest('tr'); if (!tr || !tr.dataset.row) return;   // строка «нет данных»
         byId('lstOplPrc').querySelectorAll('tr.sel').forEach(r => r.classList.remove('sel')); tr.classList.add('sel');
         byId('CommOpl').value = JSON.parse(tr.dataset.row)[4] ?? '';
     });
@@ -86,12 +139,20 @@
                 if (c[0] === 'DataDog' && (r.IsActive === true || r.IsActive == 1)) td.style.background = '#99ccff';
             });
         });
+        if (MODERN && !rows.length) emptyRow(b, dogCols.length);
+        count('lstDogs', rows.length);
         vis('lstDogsBox', true);   // в Access SetRS4DogScet всегда делает подформу видимой
     }
 
     // --- Выбор строки (xListSch_ItemClick + SetRowSOplPrc)
     const set = (id, v) => { const el = byId(id); if (el) el.value = v ?? ''; };
-    const vis = (id, on) => { const el = byId(id); if (el) el.style.visibility = on ? 'visible' : 'hidden'; };
+    // Скрытие элемента: в Access-раскладке элементы стоят на координатах и место под них сохранено
+    // (visibility), в современной сетке пустое место не нужно — убираем из потока (display).
+    const vis = (id, on) => {
+        const el = byId(id); if (!el) return;
+        if (MODERN) { el.style.display = on ? '' : 'none'; }
+        else { el.style.visibility = on ? 'visible' : 'hidden'; }
+    };
     function select(tr) {
         body.querySelectorAll('tr.sel').forEach(r => r.classList.remove('sel'));
         tr.classList.add('sel');
@@ -99,8 +160,14 @@
         set('PthSch', d.pth); set('txtPrim', d.Prim); set('OstOPl', d.OstOPl); set('SmSch', d.SmSch); set('txtComm', d.Comm);
         set('CommOpl', '');
         byId('Надпись61').textContent = 'Сумма,' + (d.InUEtxt ?? '');
-        // По письму Семёнова от 14.01.22: рубли обычным фоном, валюта зелёным жирным
-        const sm = byId('SmSch'); if (sm) { const rub = d.InUEtxt === 'руб.'; sm.style.background = rub ? '#8080c0' : '#ccffcc'; sm.style.fontWeight = rub ? 'normal' : 'bold'; }
+        // По письму Семёнова от 14.01.22: рубли обычным фоном, валюта зелёным жирным.
+        // В современном виде «аксессовские» цвета не нужны — валюта помечается классом.
+        const sm = byId('SmSch');
+        if (sm) {
+            const rub = d.InUEtxt === 'руб.';
+            if (MODERN) { sm.classList.toggle('vh-sum-ue', !rub); sm.style.background = ''; sm.style.fontWeight = ''; }
+            else { sm.style.background = rub ? '#8080c0' : '#ccffcc'; sm.style.fontWeight = rub ? 'normal' : 'bold'; }
+        }
         document.querySelectorAll('[name=whoPick]').forEach(r => r.checked = String(r.value) === String(d.WhoPick));
         vis('ActBut', d.Acts === 'Да'); vis('RepBut', d.Reps === 'Да');
         oplButtons(tr);
@@ -116,9 +183,19 @@
 
     // --- Двойной щелчок → карточка счёта (xListSch_DblClick): ID > 0 frmMassInputSch, ID < 0 frmScetaDetal.
     // В Access карточка открывалась поверх списка (acDialog); здесь отдельной вкладкой.
-    body.addEventListener('dblclick', e => {
+    // Двойной щелчок считаем сами, а не через событие dblclick: браузер шлёт dblclick и на дребезг
+    // мыши, из-за чего карточка открывалась от одиночного нажатия. Наши условия строже:
+    // два щелчка по ОДНОЙ строке не дальше чем в 8 px и не позже 450 мс.
+    const DBL_MS = 450, DBL_PX = 8;
+    let lastTap = null;                                  // {id, x, y, t}
+    body.addEventListener('click', e => {
         const tr = e.target.closest('tr'); if (!tr) return;
-        window.open(VH.schetUrl + '?id=' + tr.dataset.id, 'schet' + tr.dataset.id);
+        const now = Date.now(), x = e.clientX, y = e.clientY, id = tr.dataset.id;
+        const prev = lastTap;
+        const dbl = prev && prev.id === id && now - prev.t <= DBL_MS
+            && Math.abs(prev.x - x) <= DBL_PX && Math.abs(prev.y - y) <= DBL_PX;
+        lastTap = dbl ? null : { id, x, y, t: now };      // третье нажатие начинает новую пару
+        if (dbl) window.open(VH.schetUrl + '?id=' + id, 'schet' + id);
     });
 
     // --- Как в Access: сортировка по дате (LngDta) по убыванию, выбрана первая строка
@@ -178,7 +255,7 @@
 
     // --- Оплаты: строка «К оплате» выбирается щелчком (как lstOplPrc)
     byId('lstOplPrcToDo')?.addEventListener('click', e => {
-        const tr = e.target.closest('tr'); if (!tr) return;
+        const tr = e.target.closest('tr'); if (!tr || !tr.dataset.row) return;
         byId('lstOplPrcToDo').querySelectorAll('tr.sel').forEach(r => r.classList.remove('sel')); tr.classList.add('sel');
     });
     // ответ сервера: row_html — строка счёта заново (ChangeDataInList), panel — списки панели заново (SetRowSOplPrc)

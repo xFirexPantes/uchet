@@ -27,8 +27,15 @@ $filterApplied = $filter->dateS || $filter->datePo || $filter->nsch !== '' || (s
 <form method="get" action="<?= Url::to(['index']) ?>" class="access-form" id="frmStat">
 <?= Html::hiddenInput('allSch', $filter->allSch ? 1 : 0) ?>
 <?= Html::hiddenInput('firma', $filter->firma, ['id' => 'cboFirma']) ?>
-<?php if ($oneSch): ?><?= Html::hiddenInput('id', $filter->id) ?><?php endif ?>
+<?php if ($oneSch): ?>
+    <?= Html::hiddenInput('id', $filter->id) ?>
+    <?php // В режиме одного счёта переключатели заблокированы, а disabled-поля в GET не попадают.
+          // typeSch нужен процедуре xp_GetAllSch — передаём его скрытым полем ?>
+    <?= Html::hiddenInput('typeSch', (int)$filter->typeSch) ?>
+<?php endif ?>
 <div class="a-cnt">Счетов: <?= count($rows) ?></div>
+<?php // Переключение вида: кнопка отправляет форму с текущими фильтрами, вид запоминается в сессии ?>
+<button type="submit" name="view" value="modern" class="a-btn" title="Современный вид экрана" style="left:1320px;top:714px;width:225px;height:22px;font-size:11px;">⇄ Современный вид</button>
 <?php // Подформа lstDogs (subfrmFObnovlen1_01): активные договоры счёта. Место и размер из SaveAsText. ?>
 <div class="a-listbox a-sub" id="lstDogsBox" style="left:158px;top:18px;width:432px;height:85px;visibility:hidden"><table id="lstDogs"></table></div>
 <div class="a-frame" style="left:155px;top:110px;width:172px;height:57px;"></div>
@@ -39,16 +46,16 @@ $filterApplied = $filter->dateS || $filter->datePo || $filter->nsch !== '' || (s
 <button type="submit" class="a-btn" title="Поиск" style="left:115px;top:68px;width:34px;height:34px;">🔍</button>
 <div class="a-lbl" id="Надпись18" style="left:340px;top:107px;width:80px;height:21px;font-size:16px;">Сумма,$</div>
 <div class="a-txt" style="left:420px;top:107px;width:170px;height:20px;font-size:16px;"><input type="text" readonly value="<?= $total === null ? '' : Yii::$app->formatter->asDecimal($total, 2) ?>"></div>
-<button type="submit" name="allSch" value="<?= $filter->allSch ? 0 : 1 ?>" class="a-btn <?= $filter->allSch ? 'on' : '' ?>" title="Режим показа счетов" style="left:1565px;top:123px;width:72px;height:33px;"><?= $filter->allSch ? 'Все счета' : 'Открытые счета' ?></button>
+<button type="submit" name="allSch" value="<?= $filter->allSch ? 0 : 1 ?>" class="a-btn <?= $filter->allSch ? 'on' : '' ?>" title="Режим показа счетов" style="left:1565px;top:123px;width:72px;<?= $oneSch ? 'display:none;' : '' ?>height:33px;"><?= $filter->allSch ? 'Все счета' : 'Открытые счета' ?></button>
 <div class="a-list" style="left:4px;top:302px;width:1636px;height:414px;"><?= $this->render('_list', ['rows' => $rows]) ?></div>
 <button type="button" class="a-btn" id="Plat" title="Платежи по счёту (из 1С)" style="left:1433px;top:123px;width:64px;height:33px;">Платежи</button>
 <button type="button" class="a-btn" id="butExel" title="Забрать товар" style="left:1391px;top:123px;width:38px;height:33px;">Тов</button>
 <div class="a-lbl" id="Надпись50" style="left:174px;top:129px;width:138px;height:16px;font-size:13px;">Давальческое сырьё</div>
-<input type="radio" class="a-opt" name="typeSel" value="2" <?= (int)$filter->typeSel === 2 ? 'checked' : '' ?> <?= $oneSch && 'typeSel' === 'typeSel' ? 'disabled' : '' ?> onchange="this.form.submit()" style="left:159px;top:131px;width:15px;height:17px;">
+<input type="radio" class="a-opt" name="typeSel" value="2" <?= (int)$filter->typeSel === 2 ? 'checked' : '' ?> <?= $oneSch ? 'disabled' : '' ?> onchange="this.form.submit()" style="left:159px;top:131px;width:15px;height:17px;">
 <div class="a-lbl" id="Надпись47" style="left:173px;top:113px;width:153px;height:16px;font-size:13px;">НЕ давальческое сырьё</div>
-<input type="radio" class="a-opt" name="typeSel" value="1" <?= (int)$filter->typeSel === 1 ? 'checked' : '' ?> <?= $oneSch && 'typeSel' === 'typeSel' ? 'disabled' : '' ?> onchange="this.form.submit()" style="left:158px;top:115px;width:15px;height:17px;">
+<input type="radio" class="a-opt" name="typeSel" value="1" <?= (int)$filter->typeSel === 1 ? 'checked' : '' ?> <?= $oneSch ? 'disabled' : '' ?> onchange="this.form.submit()" style="left:158px;top:115px;width:15px;height:17px;">
 <div class="a-lbl" id="Надпись52" style="left:174px;top:144px;width:79px;height:16px;font-size:13px;">Не важно</div>
-<input type="radio" class="a-opt" name="typeSel" value="3" <?= (int)$filter->typeSel === 3 ? 'checked' : '' ?> <?= $oneSch && 'typeSel' === 'typeSel' ? 'disabled' : '' ?> onchange="this.form.submit()" style="left:159px;top:146px;width:15px;height:17px;">
+<input type="radio" class="a-opt" name="typeSel" value="3" <?= (int)$filter->typeSel === 3 ? 'checked' : '' ?> <?= $oneSch ? 'disabled' : '' ?> onchange="this.form.submit()" style="left:159px;top:146px;width:15px;height:17px;">
 <div class="a-lbl" id="Надпись27" style="left:6px;top:273px;width:106px;height:14px;color:#0000ff;">Забрать полностью</div>
 <div class="a-lbl" id="Надпись28" style="left:6px;top:287px;width:106px;height:14px;color:#00ff00;">Забрать частично</div>
 <div class="a-lbl" id="Надпись29" style="left:465px;top:273px;width:88px;height:14px;color:#ff0000;">Задерживаются</div>
@@ -93,9 +100,9 @@ $filterApplied = $filter->dateS || $filter->datePo || $filter->nsch !== '' || (s
 <div class="a-lbl" id="Надпись86" style="left:643px;top:288px;width:63px;height:14px;color:#00ff00;">ФЗ-275</div>
 <div class="a-lbl" id="Надпись89" style="left:0px;top:113px;width:68px;height:16px;font-size:12px;background:#8080c0;">Счета на</div>
 <div class="a-lbl" id="Надпись91" style="left:18px;top:128px;width:54px;height:16px;">Элементы</div>
-<input type="radio" class="a-opt" name="typeSch" value="0" <?= (int)$filter->typeSch === 0 ? 'checked' : '' ?> <?= $oneSch && 'typeSch' === 'typeSel' ? 'disabled' : '' ?> onchange="this.form.submit()" style="left:2px;top:130px;width:17px;height:17px;">
+<input type="radio" class="a-opt" name="typeSch" value="0" <?= (int)$filter->typeSch === 0 ? 'checked' : '' ?> <?= $oneSch ? 'disabled' : '' ?> onchange="this.form.submit()" style="left:2px;top:130px;width:17px;height:17px;">
 <div class="a-lbl" id="Надпись93" style="left:18px;top:142px;width:41px;height:16px;">Детали</div>
-<input type="radio" class="a-opt" name="typeSch" value="1" <?= (int)$filter->typeSch === 1 ? 'checked' : '' ?> <?= $oneSch && 'typeSch' === 'typeSel' ? 'disabled' : '' ?> onchange="this.form.submit()" style="left:2px;top:144px;width:17px;height:17px;">
+<input type="radio" class="a-opt" name="typeSch" value="1" <?= (int)$filter->typeSch === 1 ? 'checked' : '' ?> <?= $oneSch ? 'disabled' : '' ?> onchange="this.form.submit()" style="left:2px;top:144px;width:17px;height:17px;">
 <div class="a-txt" style="left:1462px;top:180px;width:68px;height:17px;font-size:12px;"><input type="date" name="dateS" value="<?= Html::encode($filter->dateS) ?>" <?= $oneSch ? 'disabled' : '' ?>></div>
 <div class="a-lbl" id="Надпись5" style="left:1534px;top:180px;width:27px;height:17px;font-size:13px;font-weight:bold;">по</div>
 <div class="a-txt" style="left:1568px;top:180px;width:68px;height:17px;font-size:12px;"><input type="date" name="datePo" value="<?= Html::encode($filter->datePo) ?>" <?= $oneSch ? 'disabled' : '' ?>></div>
@@ -156,41 +163,6 @@ $this->registerCss(<<<CSS
 .a-sub th { background:#ece9d8; font-weight:normal; padding:0 3px; position:sticky; top:0; white-space:nowrap; }
 CSS);
 
-// Общий помощник «раздвигать столбцы» для всех таблиц проекта
-$this->registerJsFile('@web/js/colresize.js');
-$this->registerCssFile('@web/css/colresize.css');
-
-// Окна и помощники, которыми пользуется скрипт экрана
-$this->registerJsFile('@web/js/interval.js');
-$this->registerJsFile('@web/js/picker.js');
-$this->registerJsFile('@web/js/access-dialog.js');
-$this->registerJsFile('@web/js/msgbox.js');
-// Настройки и поведение экрана — web/js/vh-schet.js (общий для обоих видов экрана).
-// Скрипт читает адреса действий, CSRF-токен и тип счёта из window.VH.
-$this->registerJs('window.VH = ' . Json::encode([
-    'panelUrl'  => Url::to(['panel']),
-    'actUrl'    => Url::to(['act']),
-    'primUrl'   => Url::to(['prim']),
-    'getPrcUrl' => Url::to(['get-prc']),
-    'whoBuyUrl' => Url::to(['who-buy']),
-    'partUrl'   => Url::to(['part-sums']),
-    'pthUrl'    => Url::to(['pth-file']),
-    'fltUrl'    => Url::to(['vh-dlg/flt']),
-    'chgUrl'    => Url::to(['vh-dlg/chg-hist']),
-    'mailUrl'   => Url::to(['vh-dlg/mail-txt']),
-    'postUrl'   => Url::to(['vh-dlg/sch-post']),
-    'srokUrl'   => Url::to(['vh-dlg/srok']),
-    'docsUrl'   => Url::to(['vh-dlg/docs']),
-    'platUrl'   => Url::to(['vh-dlg/plat']),
-    'tovUrl'    => Url::to(['vh-dlg/get-tov']),
-    'actsUrl'   => Url::to(['vh-dlg/acts']),
-    'dlgActUrl' => Url::to(['vh-dlg/act']),
-    'schetUrl'  => Url::to(['schet/view']),
-    'csrfP'     => Yii::$app->request->csrfParam,
-    'csrfT'     => Yii::$app->request->csrfToken,
-    'typeSch'   => (int)$filter->typeSch,
-    'fltOn'     => (bool)$filterApplied,
-]) . ';', \yii\web\View::POS_BEGIN);
-// Скрипт экрана — в конце страницы, когда разметка уже есть (раньше он тоже шёл после формы)
-$this->registerJsFile('@web/js/vh-schet.js', ['position' => \yii\web\View::POS_END]);
+// Помощники, настройки (window.VH) и скрипт поведения — общие для обоих видов экрана
+echo $this->render('_scripts', ['filter' => $filter, 'filterApplied' => $filterApplied]);
 echo $this->render('@app/views/access/_help');

@@ -1,0 +1,304 @@
+<?php
+/**
+ * «Входящие счета» — современный вид (каркас).
+ *
+ * Данные, поведение и окна — те же, что в виде «как в Access»: разметку обрабатывает web/js/vh-schet.js,
+ * который ищет таблицу #vhList, списки панели (lstOplPrc, lstOplPrcToDo, lstPlat, lstDogs), поля панели
+ * (SmSch, OstOPl, txtPrim, txtComm, LastAnsw, LastAnswDta, PthSch, CommOpl) и кнопки по id.
+ * Поэтому здесь сохранены ВСЕ id формы Access, ТИПЫ полей (input/textarea — скрипт пишет в .value)
+ * и ПОРЯДОК колонок таблицы (скрипт правит tr.cells[1] — примечание, tr.cells[16] — комментарий).
+ *
+ * Отличие от старого вида — только раскладка: вместо координат left/top — сетка Bootstrap 5.
+ * Переключение вида — кнопка «Как в Access» (?view=access), выбор запоминается в сессии.
+ *
+ * @var yii\web\View $this
+ * @var app\modules\zakupki\models\VhSchetFilter $filter
+ * @var array $rows
+ * @var float|null $total
+ */
+
+use yii\helpers\Html;
+use yii\helpers\Url;
+
+$this->title = 'Входящие счета';
+$oneSch = $filter->id > 0;                                                  // открыта на один счёт (OpenArgs)
+$filterApplied = $filter->dateS || $filter->datePo || $filter->nsch !== '' || (string)$filter->firma !== '';  // как IsApplyFlt
+$typeSch = (int)$filter->typeSch;
+?>
+<div class="vh-modern">
+
+    <div class="d-flex align-items-start flex-wrap gap-3 mb-3">
+        <div>
+            <h1 class="h4 mb-1">Входящие счета</h1>
+            <div class="text-secondary small">Список счетов за период и работа по выбранному счёту</div>
+        </div>
+        <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge text-bg-light border fs-6 fw-normal">Счетов: <?= count($rows) ?></span>
+            <?php // Переключение вида: вид запоминается в сессии, фильтры сохраняются в адресе ?>
+            <a class="btn btn-sm btn-outline-secondary" title="Вид как в форме Access"
+               href="<?= Html::encode(Url::to(array_merge(['index'], Yii::$app->request->get(), ['view' => 'access']))) ?>">☰ Вид как в Access</a>
+        </div>
+    </div>
+
+    <?php foreach ($filter->getFirstErrors() as $e): ?>
+        <div class="alert alert-danger py-1"><?= Html::encode($e) ?></div>
+    <?php endforeach ?>
+
+    <?php // Фильтры — та же форма GET (butF_Click): имена полей как у формы Access ?>
+    <form method="get" action="<?= Url::to(['index']) ?>" class="card card-body mb-3" id="frmStat">
+        <?= Html::hiddenInput('firma', $filter->firma, ['id' => 'cboFirma']) ?>
+        <?= Html::hiddenInput('view', 'modern') ?>
+        <?php if ($oneSch): ?>
+            <?= Html::hiddenInput('id', $filter->id) ?>
+            <?php // В режиме одного счёта переключатели заблокированы, а disabled-поля в GET не попадают.
+                  // typeSch при этом нужен процедуре xp_GetAllSch — передаём его скрытым полем ?>
+            <?= Html::hiddenInput('typeSch', $typeSch) ?>
+        <?php endif ?>
+
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small text-secondary mb-1" for="frmDateS">Счета с</label>
+                <input type="date" class="form-control form-control-sm" id="frmDateS" name="dateS"
+                       value="<?= Html::encode($filter->dateS) ?>" <?= $oneSch ? 'disabled' : '' ?>>
+            </div>
+            <div class="col-auto">
+                <label class="form-label small text-secondary mb-1" for="frmDatePo">по</label>
+                <input type="date" class="form-control form-control-sm" id="frmDatePo" name="datePo"
+                       value="<?= Html::encode($filter->datePo) ?>" <?= $oneSch ? 'disabled' : '' ?>>
+            </div>
+            <div class="col-auto">
+                <label class="form-label small text-secondary mb-1" for="frmNsch">№ счёта</label>
+                <input type="text" class="form-control form-control-sm" id="frmNsch" name="nsch" maxlength="18"
+                       value="<?= Html::encode($filter->nsch) ?>" <?= $oneSch ? 'disabled' : '' ?>>
+            </div>
+
+            <?php // TypeSel: сырьё (1 — НЕ давальческое, 2 — давальческое, 3 — не важно) ?>
+            <div class="col-auto">
+                <span class="form-label small text-secondary mb-1 d-block">Сырьё</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Тип сырья">
+                    <?php foreach ([1 => 'НЕ дав.', 2 => 'Дав.', 3 => 'Не важно'] as $v => $t): ?>
+                        <input type="radio" class="btn-check" name="typeSel" id="typeSel<?= $v ?>" value="<?= $v ?>"
+                               autocomplete="off" <?= (int)$filter->typeSel === $v ? 'checked' : '' ?>
+                               <?= $oneSch ? 'disabled' : '' ?> onchange="this.form.submit()">
+                        <label class="btn btn-outline-secondary" for="typeSel<?= $v ?>"><?= $t ?></label>
+                    <?php endforeach ?>
+                </div>
+            </div>
+
+            <?php // GrpTypeSch: счета на элементы (0) или детали (1) ?>
+            <div class="col-auto">
+                <span class="form-label small text-secondary mb-1 d-block">Счета на</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Счета на">
+                    <?php foreach ([0 => 'Элементы', 1 => 'Детали'] as $v => $t): ?>
+                        <input type="radio" class="btn-check" name="typeSch" id="typeSch<?= $v ?>" value="<?= $v ?>"
+                               autocomplete="off" <?= $typeSch === $v ? 'checked' : '' ?>
+                               <?= $oneSch ? 'disabled' : '' ?> onchange="this.form.submit()">
+                        <label class="btn btn-outline-secondary" for="typeSch<?= $v ?>"><?= $t ?></label>
+                    <?php endforeach ?>
+                </div>
+            </div>
+
+            <?php // AllSch: без галки — только открытые счета. Скрытое 0 + галка 1: PHP берёт последнее значение.
+                   // В режиме одного счёта галка не нужна (в Access AllSch.Visible = False) ?>
+            <div class="col-auto" <?= $oneSch ? 'style="display:none"' : '' ?>>
+                <div class="form-check mb-1">
+                    <?= Html::hiddenInput('allSch', 0) ?>
+                    <input class="form-check-input" type="checkbox" name="allSch" value="1" id="chkAllSch"
+                           <?= $filter->allSch ? 'checked' : '' ?>
+                           onchange="this.form.submit()">
+                    <label class="form-check-label small" for="chkAllSch">Все счета</label>
+                </div>
+            </div>
+
+            <div class="col-auto ms-auto d-flex gap-2 flex-wrap">
+                <button type="submit" class="btn btn-sm btn-primary">Найти</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="GetIntrv"
+                        title="Выбрать интервал дат" <?= $oneSch ? 'disabled' : '' ?>>Интервал</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="flt"
+                        title="Фильтр по продавцу и датам" <?= $oneSch ? 'style="display:none"' : '' ?>>Фильтр ▼</button>
+            </div>
+        </div>
+
+        <?php // Признак применённого фильтра (Надпись78 + флажок) — только для чтения, как в Access ?>
+        <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" disabled <?= $filterApplied ? 'checked' : '' ?>>
+            <label class="form-check-label small text-secondary">Применён фильтр</label>
+        </div>
+    </form>
+
+    <div class="row g-3">
+        <?php // ---------------- Список счетов (xListSch) ---------------- ?>
+        <div class="col-12 col-xl-8">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex align-items-center gap-2 py-2">
+                    <strong class="me-2">Счета</strong>
+                    <span class="text-secondary small">Щелчок — выбрать, двойной — открыть карточку</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="usersrt"
+                            title="Сортировать по пользователю">↕ Пользователь</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnShowLogPrices"
+                            title="История изменений счетов списка">Ист</button>
+                </div>
+                <div class="table-responsive vh-modern-scroll">
+                    <?php // Порядок колонок = порядок в _list.php: скрипт правит tr.cells[1] и tr.cells[16] ?>
+                    <?= $this->render('_list-modern', ['rows' => $rows]) ?>
+                </div>
+            </div>
+        </div>
+
+        <?php // ---------------- Панель выбранного счёта ---------------- ?>
+        <div class="col-12 col-xl-4">
+            <div class="card">
+                <div class="card-header bg-white py-2">
+                    <strong>Выбранный счёт</strong>
+                </div>
+                <div class="card-body">
+
+                    <?php // Сумма и остаток. Подпись «Сумма,руб./у.е.» меняет скрипт — id Надпись61 ?>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <div class="vh-sum">
+                                <div class="vh-sum-k" id="Надпись61">Сумма,руб.</div>
+                                <input type="text" class="form-control form-control-sm vh-sum-in" id="SmSch" readonly>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="vh-sum">
+                                <div class="vh-sum-k">Осталось</div>
+                                <input type="text" class="form-control form-control-sm vh-sum-in" id="OstOPl" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <?php // «Кто забирает» (WhoPick_AfterUpdate) — сохраняется сразу ?>
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span class="small text-secondary">Кто забирает</span>
+                        <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Кто забирает">
+                            <?php foreach ([0 => 'Осташов', 1 => 'Наумов'] as $v => $t): ?>
+                                <input type="radio" class="btn-check" name="whoPick" id="whoPick<?= $v ?>" value="<?= $v ?>" autocomplete="off">
+                                <label class="btn btn-outline-secondary" for="whoPick<?= $v ?>"><?= $t ?></label>
+                            <?php endforeach ?>
+                        </div>
+                    </div>
+
+                    <?php // Действия: id те же, что в форме Access — к ним привязан vh-schet.js ?>
+                    <div class="d-flex flex-wrap gap-1 mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="AddOpl" title="Добавить оплату">＋ Оплата</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="AddOplToDo" title="Добавить строку «К оплате»">＋ К оплате</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="ClsByPlat" title="Изменить состояние счёта (закрыть к оплате)">✓ Закрыть</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="Plat" title="Платежи по счёту (из 1С)">Платежи</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="MakeEmail" title="Письмо поставщику по счёту">✉ Письмо</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLtrs1C" title="Письма по счёту">Письма</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="MailFormBut" title="Переписка по счёту">Переписка</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="ActBut" title="Акты">Акт</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="RepBut" title="Отчеты">Отчёт</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="GetPartSums" title="Долги: выгрузка в Excel по покупателю">Долги</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="butExel" title="Забрать товар">Тов</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="KompelSrokBut" title="Сроки поставки: загрузка файла поставщика">Сроки пост.</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="SpokKompelbtn" title="Сроки КОМПЭЛ: загрузка файла и выбор резервов">Сроки КОМПЭЛ</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="EditPrim" title="Изменить примечание">✎ Примечание</button>
+                    </div>
+
+                    <?php // Списки панели: те же id, что у ListBox Access (скрипт наполняет их по show[]).
+                          // data-count — место счётчика строк на вкладке: его обновляет vh-schet.js (fill) ?>
+                    <ul class="nav nav-tabs nav-fill vh-modern-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#paneOpl" type="button" role="tab">
+                                Оплаты <span class="badge rounded-pill text-bg-secondary" data-count="lstOplPrc">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#paneTodo" type="button" role="tab">
+                                К оплате <span class="badge rounded-pill text-bg-secondary" data-count="lstOplPrcToDo">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#panePlat" type="button" role="tab">
+                                Платежи <span class="badge rounded-pill text-bg-secondary" data-count="lstPlat">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#paneDogs" type="button" role="tab">
+                                Договоры <span class="badge rounded-pill text-bg-secondary" data-count="lstDogs">0</span>
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content border border-top-0 rounded-bottom p-2 mb-3">
+                        <div class="tab-pane fade show active" id="paneOpl" role="tabpanel">
+                            <table class="table table-sm mb-0"><tbody id="lstOplPrc"></tbody></table>
+                            <button type="button" class="btn btn-sm btn-link text-danger px-0" id="DelOplPrc" title="Удалить выбранную оплату">− удалить оплату</button>
+                        </div>
+                        <div class="tab-pane fade" id="paneTodo" role="tabpanel">
+                            <table class="table table-sm mb-0"><tbody id="lstOplPrcToDo"></tbody></table>
+                            <button type="button" class="btn btn-sm btn-link text-danger px-0" id="DelOplToDo" title="Удалить выбранную строку «К оплате»">− удалить строку</button>
+                        </div>
+                        <div class="tab-pane fade" id="panePlat" role="tabpanel">
+                            <table class="table table-sm mb-0"><tbody id="lstPlat"></tbody></table>
+                        </div>
+                        <div class="tab-pane fade" id="paneDogs" role="tabpanel">
+                            <?php // lstDogsBox — скрипт делает подформу видимой (SetRS4DogScet); до выбора счёта её нет ?>
+                            <div class="vh-modern-dogs" id="lstDogsBox" style="display:none"><table id="lstDogs"></table></div>
+                        </div>
+                    </div>
+
+                    <?php // Примечание и комментарий: двойной щелчок по комментарию — правка (frmShowPrim 83) ?>
+                    <div class="mb-2">
+                        <div class="small text-secondary mb-1">Примечание</div>
+                        <textarea class="form-control form-control-sm" id="txtPrim" rows="2" readonly></textarea>
+                    </div>
+                    <div class="mb-2">
+                        <div class="small text-secondary mb-1">Комментарий <span class="fw-normal">(двойной щелчок — изменить)</span></div>
+                        <textarea class="form-control form-control-sm" id="txtComm" rows="3" readonly style="cursor:pointer"></textarea>
+                    </div>
+
+                    <?php // Последний ответ: скрипт пишет дату (LastAnswDta) и текст (LastAnsw) ?>
+                    <div class="mb-2">
+                        <div class="small text-secondary mb-1 d-flex gap-2 align-items-center">
+                            <span>Ответ</span>
+                            <input type="text" class="form-control form-control-sm ms-auto w-auto" id="LastAnswDta" readonly>
+                        </div>
+                        <textarea class="form-control form-control-sm" id="LastAnsw" rows="2" readonly></textarea>
+                    </div>
+
+                    <?php // Путь к счёту: двойной щелчок открывает файл или прикрепляет новый, Delete — удалить ?>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small">📎</span>
+                        <input type="text" class="form-control form-control-sm vh-modern-path" id="PthSch" readonly
+                               title="Двойной щелчок — открыть файл счёта или выбрать новый; Delete — удалить путь">
+                    </div>
+
+                    <?php // Скрытые поля, которые читает скрипт (ListSubItems в Access) ?>
+                    <input type="hidden" id="CommOpl">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php
+// Стили вида: карточки, «липкая» шапка таблицы, компактные строки
+$this->registerCss(<<<CSS
+.vh-modern .vh-sum { background:#f8f9fa; border-radius:.5rem; padding:.4rem .6rem; }
+.vh-modern .vh-sum-k { font-size:.7rem; text-transform:uppercase; letter-spacing:.03em; color:#6c757d; }
+.vh-modern .vh-sum-in { border:0; background:transparent; padding:0; font-size:1.05rem; font-weight:600; }
+.vh-modern .vh-sum-in:read-only { background:transparent; }
+/* Валюта счёта (InUEtxt ≠ «руб.»): в Access поле красилось в зелёный, здесь — мягкая плашка */
+.vh-modern .vh-sum-in.vh-sum-ue { background:#d1e7dd; color:#0f5132; border-radius:.25rem; padding:0 .25rem; }
+.vh-modern-scroll { max-height:calc(100vh - 320px); }
+.vh-modern-scroll table { margin-bottom:0; font-size:.8125rem; }
+.vh-modern-scroll thead th { position:sticky; top:0; z-index:2; background:#f8f9fa; font-size:.7rem;
+    text-transform:uppercase; letter-spacing:.03em; color:#495057; font-weight:600; white-space:nowrap; }
+.vh-modern-scroll td { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; }
+.vh-modern-scroll tbody tr { cursor:pointer; }
+.vh-modern-scroll tbody tr.sel > * { box-shadow:inset 0 0 0 9999px rgba(13,110,253,.10); }
+.vh-modern-tabs .nav-link { font-size:.8125rem; padding:.35rem .5rem; }
+.vh-modern .table > :not(caption) > * > * { padding:.25rem .4rem; }
+.vh-modern-dogs { overflow:auto; max-height:10rem; }
+.vh-modern-dogs table { width:100%; border-collapse:collapse; font-size:.75rem; }
+.vh-modern-dogs th { background:#f8f9fa; font-weight:600; padding:.15rem .3rem; white-space:nowrap; }
+.vh-modern-dogs td { padding:.15rem .3rem; border-bottom:1px solid #f1f3f5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vh-modern-path { font-family:ui-monospace,Consolas,monospace; font-size:.75rem; }
+CSS);
+
+// Помощники, настройки (window.VH) и скрипт поведения — общие для обоих видов экрана
+echo $this->render('_scripts', ['filter' => $filter, 'filterApplied' => $filterApplied]);
+echo $this->render('@app/views/access/_help');

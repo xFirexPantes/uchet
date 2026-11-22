@@ -14,6 +14,9 @@ use yii\web\Response;
  */
 class VhSchetController extends BaseController
 {
+    /** Виды экрана: как в Access (координаты) и современный. Выбор запоминается в сессии. */
+    public const VIEWS = ['access' => 'index', 'modern' => 'index-modern'];
+
     public function behaviors()
     {
         $b = parent::behaviors();
@@ -25,6 +28,7 @@ class VhSchetController extends BaseController
 
     /**
      * Список входящих счетов с фильтрами и панелью выбранного счёта.
+     * Вид (?view=access|modern) запоминается в сессии: форма ищет GET-ом и параметр иначе терялся бы.
      *
      * @doc    vh-schet/index
      * @legacy frmStat: Form_Open, butF_Click, FillListSch, xListSch_ItemClick, xListSch_ColumnClick
@@ -41,7 +45,17 @@ class VhSchetController extends BaseController
             $rows  = $svc->getList($filter);
             $total = $filter->id > 0 ? null : $svc->getTotal($filter);
         }
-        return $this->render('index', ['filter' => $filter, 'rows' => $rows ?? [], 'total' => $total]);
+
+        $view = (string)Yii::$app->request->get('view', '');
+        if (!isset(self::VIEWS[$view])) {
+            $view = (string)Yii::$app->session->get('vhSchet.view', 'access');
+            if (!isset(self::VIEWS[$view])) $view = 'access';
+        } else {
+            Yii::$app->session->set('vhSchet.view', $view);
+        }
+        return $this->render(self::VIEWS[$view], [
+            'filter' => $filter, 'rows' => $rows ?? [], 'total' => $total, 'view' => $view,
+        ]);
     }
 
     /**
