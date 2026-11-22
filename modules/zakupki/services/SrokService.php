@@ -76,6 +76,39 @@ class SrokService
         return ['ok' => true, 'msg' => 'Загрузка завершена'];
     }
 
+    /**
+     * «Сроки КОМПЭЛ» (frmStat.SpokKompelbtn_Click): та же загрузка, что «Сроки поставки» с Tip 6,
+     * затем экран по очереди выбирает резерв для каждой строки (SelResKompel).
+     * Возвращает ID строк tmptblKOMPELSrokNew, которым резерв ещё не выбран.
+     */
+    public function kompelLoad(?UploadedFile $file): array
+    {
+        $r = $this->load(6, $file);
+        if (!$r['ok']) return $r;
+        return ['ok' => true, 'msg' => $r['msg'], 'ids' => $this->kompelIds()];
+    }
+
+    /** SelResKompel: select ID from dbo.tmptblKOMPELSrokNew with (nolock) Where Idres = -1 and who = CURRENT_USER. */
+    public function kompelIds(): array
+    {
+        return array_map('intval', Yii::$app->db->createCommand(
+            'SELECT ID FROM dbo.tmptblKOMPELSrokNew WITH (NOLOCK) WHERE Idres = -1 AND who = CURRENT_USER'
+        )->queryColumn());
+    }
+
+    /** SetReserv(ID, IDRes): exec dbo.xp_SetReserv4Kompel — без результата. */
+    public function kompelReserv(int $id, int $idRes): array
+    {
+        if ($id <= 0 || $idRes <= 0) return ['ok' => false, 'msg' => 'Не выбран резерв'];
+        try {
+            Yii::$app->db->createCommand('SET NOCOUNT ON; EXEC dbo.xp_SetReserv4Kompel ?, ?', [1 => $id, 2 => $idRes])->execute();
+            return ['ok' => true];
+        } catch (\yii\db\Exception $e) {
+            Yii::error('dbo.xp_SetReserv4Kompel: ' . $e->getMessage(), __METHOD__);
+            return ['ok' => false, 'msg' => 'Не удалось сохранить резерв'];
+        }
+    }
+
     /** КОМПЭЛ: в A2 в конце дата отчёта (Right(A2, 10)) — она уходит в процедуру как RepDT. */
     private function kompel(Worksheet $sh, string &$repDt): ?string
     {

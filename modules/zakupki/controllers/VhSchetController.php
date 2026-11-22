@@ -57,10 +57,11 @@ class VhSchetController extends BaseController
     }
 
     /**
-     * Сохранения с экрана. act: Opl* — «+» оплат (AddOpl), ToDo* — «+» к оплате (AddOplToDo) и окно frmGetPrcSch 2/4; ClsByPlat, DelOplPrc (opl), DelOplToDo (todo, typeSch), WhoPick (value 0|1), PthDel (удалить путь к счёту), Prim / Comm (text) — из окна frmShowPrim.
+     * Сохранения с экрана. act: Opl* — «+» оплат (AddOpl), ToDo* — «+» к оплате (AddOplToDo) и окно frmGetPrcSch 2/4; ClsByPlat, DelOplPrc (opl), DelOplToDo (todo, typeSch), WhoPick (value 0|1), PthDel (удалить путь к счёту), Prim / Comm (text) — из окна frmShowPrim;
+     * KompelLoad (file) — загрузка «Сроков КОМПЭЛ», KompelReserv (row — ID строки tmptblKOMPELSrokNew, res — ID резерва).
      * @doc    vh-schet/index
      * @legacy frmStat: AddOpl_Click, fnAddOplPrc, MailAboutIt, MailAboutBigSum, AddOplToDo_Click; fnSkladDogsAllowScet; frmGetPrcSch: FillVl4Cmd2Opl, Dta2Opl_DblClick, Prc_Click, Rb_Click, Cncl_Click;
-     *         frmStat: WhoPick_AfterUpdate, PthSch_KeyDown, txtComm_DblClick, ClsByPlat_Click, DelOplPrc_Click, DelOplToDo_Click, ChangeDataInList; frmShowPrim: txtUpdate (44, 83)
+     *         frmStat: WhoPick_AfterUpdate, PthSch_KeyDown, txtComm_DblClick, ClsByPlat_Click, DelOplPrc_Click, DelOplToDo_Click, ChangeDataInList, SpokKompelbtn_Click, SelResKompel, SetReserv; frmShowPrim: txtUpdate (44, 83)
      */
     public function actionAct(int $id)
     {
@@ -90,6 +91,8 @@ class VhSchetController extends BaseController
             'PthSet'  => $svc->pathSet($id, \yii\web\UploadedFile::getInstanceByName('file')),
             'Prim'    => $svc->prim($id, (string)$r->post('text', '')),
             'Comm'    => $svc->comm($id, (string)$r->post('text', '')),
+            'KompelLoad'   => (new \app\modules\zakupki\services\SrokService())->kompelLoad(\yii\web\UploadedFile::getInstanceByName('file')),
+            'KompelReserv' => (new \app\modules\zakupki\services\SrokService())->kompelReserv((int)$r->post('row'), (int)$r->post('res')),
             default   => ['ok' => false, 'msg' => 'Неизвестное действие'],
         };
         // ChangeDataInList: строка счёта заново (xp_GetSchByID) — та же разметка, что у списка

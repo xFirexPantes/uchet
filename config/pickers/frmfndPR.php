@@ -16,4 +16,17 @@ return [
         'free' => 'Указанного каталога нет в списке. Всё равно использовать его?',
         'width' => 556,     // ширина формы: 8333 твипа
     ],
+
+    // 155: «Выбор резерва счёта» — из frmStat.SelResKompel (после загрузки «Сроков КОМПЭЛ»).
+    // Form_Open Case 155: ColumnCount 3, BoundColumn 0, ColumnHeads Нет, ColumnWidths "3500;3500;1000",
+    // ChoiceRab.Visible = True, fnd.Visible = False; FillNmes → exec dbo.xp_ChoiceRes4KompelSrok <ID строки tmptblKOMPELSrokNew>.
+    // ChoiceRab_Click / lstNmes_DblClick: KodNullEl = lstNmes.Column(0) → SetReserv(ID, IDRes).
+    155 => [
+        'title' => 'Выбор резерва счёта',
+        'proc' => 'dbo.xp_ChoiceRes4KompelSrok',
+        'cols' => [[0, '', 233], [1, '', 233], [2, '', 67]], 'key' => 0, 'noHead' => true,
+        'noFind' => true,   // поле поиска скрыто, список сразу полный
+        'extra' => true,    // ID строки tmptblKOMPELSrokNew приходит с экрана
+        'width' => 560,     // 8000 твипов столбцов + рамка
+    ],
 ];
