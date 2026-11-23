@@ -16,11 +16,16 @@ html.dlg-modern,
     --vh-ink: #1b5c72;
 }
 
+/* !important: макет dialog.php задаёт фон тела inline (background:#ece9d8) */
 html.dlg-modern body {
-    background: #fff;
+    background: #fff !important;
     font: 13px system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
     color: #20414d;
 }
+/* Сама форма тоже белая: между абсолютно поставленными полями иначе виден фон окна */
+html.dlg-modern .access-form,
+html.dlg-modern #frmShowPrim,
+html.dlg-modern #frmGetPrcSch { background: #fff; }
 
 /* ---------- frmShowPrim: примечание / комментарий ---------- */
 html.dlg-modern #frmShowPrim #N {
