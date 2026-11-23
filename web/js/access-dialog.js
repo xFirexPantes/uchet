@@ -11,9 +11,12 @@
         try {
             if (window.parent !== window && window.parent.accessDialog) return window.parent.accessDialog(new URL(url, location.href).href, width, height);
         } catch (e) { /* другой сайт — открываем у себя */ }
+        // Современный вид экрана (Bootstrap-раскладка .vh-modern): окно получает корпоративные стили
+        // из самого экрана (index-modern.php, селекторы .vh-modern-dlg). Остальные экраны — как раньше.
+        const MODERN = !!document.querySelector('.vh-modern');
         return new Promise(resolve => {
             const ov = document.createElement('div');
-            ov.className = 'picker-ov';
+            ov.className = 'picker-ov' + (MODERN ? ' vh-modern-dlg' : '');
             const box = document.createElement('div');
             box.className = 'picker';
             box.style.width = (width + 2) + 'px';
@@ -21,7 +24,7 @@
             box.style.maxWidth = 'calc(100vw - 8px)'; box.style.maxHeight = 'calc(100vh - 8px)'; box.style.overflow = 'auto';
             const fr = document.createElement('iframe');
             fr.src = url;
-            fr.style.cssText = 'display:block;border:0;width:' + width + 'px;height:' + height + 'px;background:#ece9d8';
+            fr.style.cssText = 'display:block;border:0;width:' + width + 'px;height:' + height + 'px;background:' + (MODERN ? '#fff' : '#ece9d8');
             // заголовок окна, как у формы Access: название формы и «?» (справка по окну, window.helpUrl из views/access/_help.php)
             const cap = document.createElement('div');
             cap.className = 'picker-title';
@@ -39,7 +42,12 @@
                 try { capT.textContent = fr.contentDocument.title || ''; capQ.style.visibility = fr.contentWindow.helpUrl ? 'visible' : 'hidden'; } catch (e) {}
             });
             box.appendChild(cap);
-            box.appendChild(fr);
+            // Каркас окна: заголовок и тело — разные блоки. В современном виде шапка закреплена,
+            // прокручивается только тело (стили .vh-modern-dlg .picker-body в index-modern.php).
+            const bodyBox = document.createElement('div');
+            bodyBox.className = 'picker-body';
+            bodyBox.appendChild(fr);
+            box.appendChild(bodyBox);
             ov.appendChild(box);
             document.body.appendChild(ov);
             function done(reload, value) {

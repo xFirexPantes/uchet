@@ -21,8 +21,8 @@ echo $this->render('_dlg', ['id' => $id]);
 $L = Json::encode($list);
 ?>
 <style>
-#frmGetTxt4Mail select { width:100%; height:100%; border:1px inset #999; background:#c0c0c0; font:12px Tahoma; }
-#frmGetTxt4Mail textarea { font:12px Tahoma; }
+#frmGetTxt4Mail select { width:100%; height:100%; border:1px solid #c5e7f2; border-radius:.3rem; background:#fff; font:12px system-ui,Tahoma,sans-serif; }
+#frmGetTxt4Mail textarea { font:12px system-ui,Tahoma,sans-serif; }
 </style>
 <div class="access-form" id="frmGetTxt4Mail" style="width:911px;height:503px;font-size:12px">
     <div style="left:4px;top:3px;width:900px;height:148px"><select id="lstTxt" size="8" title="Шаблон текста"></select></div>

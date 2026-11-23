@@ -34,7 +34,8 @@ window.accessPicker = function (form, mode, extra) {
     const q = new URLSearchParams({ form, mode });
     return fetch('/picker/mode?' + q).then(r => r.json()).then(m => new Promise(resolve => {
         const ov = document.createElement('div');
-        ov.className = 'picker-ov';
+        // Современный вид экрана (.vh-modern) — окно получает корпоративные стили (index-modern.php)
+        ov.className = 'picker-ov' + (document.querySelector('.vh-modern') ? ' vh-modern-dlg' : '');
         ov.innerHTML =
             '<div class="picker" style="width:' + (m.width || 300) + 'px">' +
               '<div class="picker-title"><span></span><button type="button" class="picker-x" title="Закрыть">✕</button></div>' +
