@@ -21,7 +21,16 @@ use yii\web\View;
 
 $this->title = ' ';
 $this->registerCssFile('@web/css/access-form.css');
+$this->registerCssFile('@web/css/dlg-modern.css');          // корпоративные цвета, когда окно открыто поверх современного вида
 $this->registerJsFile('@web/js/access-dialog.js');
+// dlg-modern ставится на <html> только если родитель — современный экран (.vh-modern)
+$this->registerJs(<<<'JS'
+try {
+    if (window.parent !== window && window.parent.document.querySelector('.vh-modern')) {
+        document.documentElement.classList.add('dlg-modern');
+    }
+} catch (e) { /* другой сайт или нет доступа — обычный вид Access */ }
+JS, \yii\web\View::POS_HEAD);
 $big = $mode !== 0;
 $unitCap = $unit !== '' ? $unit : 'рублей';
 $d = fn($k) => $row && !empty($row[$k]) ? substr((string)$row[$k], 0, 10) : '';

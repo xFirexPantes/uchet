@@ -17,6 +17,8 @@ use yii\helpers\Url;
 // Общий помощник «раздвигать столбцы» для всех таблиц проекта
 $this->registerJsFile('@web/js/colresize.js');
 $this->registerCssFile('@web/css/colresize.css');
+// Корпоративное оформление окон ввода (interval.js рисует окно прямо в этой странице, класс .dlg-modern)
+$this->registerCssFile('@web/css/dlg-modern.css');
 
 // Окна и помощники, которыми пользуется скрипт экрана
 $this->registerJsFile('@web/js/interval.js');

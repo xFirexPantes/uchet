@@ -18,7 +18,17 @@ use yii\web\View;
 $this->title = 'ввод текста';
 $caption = $mode === 44 ? 'Примечание счёта' : 'Комментарий к счёту';
 $this->registerCssFile('@web/css/access-form.css');
+$this->registerCssFile('@web/css/dlg-modern.css');          // корпоративные цвета, когда окно открыто поверх современного вида
 $this->registerJsFile('@web/js/access-dialog.js');
+// dlg-modern ставится на <html> только если родитель — современный экран (.vh-modern);
+// скрипт в head: класс готов до отрисовки, окно не мигает бежевым
+$this->registerJs(<<<'JS'
+try {
+    if (window.parent !== window && window.parent.document.querySelector('.vh-modern')) {
+        document.documentElement.classList.add('dlg-modern');
+    }
+} catch (e) { /* другой сайт или нет доступа — обычный вид Access */ }
+JS, \yii\web\View::POS_HEAD);
 ?>
 <style>
 #frmShowPrim #N{font:bold 13px Tahoma,sans-serif;display:flex;align-items:center;padding:0 4px}

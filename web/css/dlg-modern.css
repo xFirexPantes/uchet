@@ -1,0 +1,143 @@
+/* Корпоративное оформление окон ввода, которые не входят в vh-dlg:
+   prim.php (frmShowPrim — примечание и комментарий), get-prc.php (frmGetPrcSch), interval.js (frmGetInterval).
+
+   Класс dlg-modern ставится только когда окно открыто поверх современного экрана «Входящие счета»
+   (.vh-modern): в iframe — на <html> (скрипт в head окна), у окон в родителе (interval.js) — на оверлей.
+   На экране «как в Access» класс не ставится, и окна выглядят как раньше.
+
+   Каркас окна тот же, что у страницы: закреплённые шапка и футер, прокручивается только тело. */
+
+html.dlg-modern,
+.dlg-modern {
+    --vh-blue: #40B3D8;
+    --vh-blue-d: #2f8baa;
+    --vh-blue-l: #eaf7fc;
+    --vh-blue-b: #c5e7f2;
+    --vh-ink: #1b5c72;
+}
+
+html.dlg-modern body {
+    background: #fff;
+    font: 13px system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+    color: #20414d;
+}
+
+/* ---------- frmShowPrim: примечание / комментарий ---------- */
+html.dlg-modern #frmShowPrim #N {
+    font: 600 13px system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+    color: var(--vh-ink);
+    background: var(--vh-blue-l);
+    border-bottom: 1px solid var(--vh-blue-b);
+    padding: 0 8px;
+}
+html.dlg-modern #frmShowPrim textarea {
+    border: 1px solid var(--vh-blue-b);
+    border-radius: .35rem;
+    padding: 4px 6px;
+    color: #20414d;
+}
+html.dlg-modern #frmShowPrim textarea:focus {
+    outline: none;
+    border-color: var(--vh-blue);
+    box-shadow: 0 0 0 2px rgba(64, 179, 216, .22);
+}
+html.dlg-modern #frmShowPrim .ft {
+    background: var(--vh-blue-l);
+    border-top: 1px solid var(--vh-blue-b);
+}
+
+/* ---------- frmGetPrcSch: «сколько оплатить» / строка «к оплате» ---------- */
+html.dlg-modern #frmGetPrcSch,
+html.dlg-modern #frmGetPrcSch input,
+html.dlg-modern #frmGetPrcSch textarea,
+html.dlg-modern #frmGetPrcSch button {
+    font: 13px system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+}
+html.dlg-modern #frmGetPrcSch .lbl { color: var(--vh-ink); }
+html.dlg-modern #frmGetPrcSch input[type=text],
+html.dlg-modern #frmGetPrcSch textarea {
+    border: 1px solid var(--vh-blue-b);
+    border-radius: .3rem;
+    padding: 0 5px;
+    background: #fff;
+    color: #20414d;
+}
+html.dlg-modern #frmGetPrcSch input[type=text]:focus,
+html.dlg-modern #frmGetPrcSch textarea:focus {
+    outline: none;
+    border-color: var(--vh-blue);
+    box-shadow: 0 0 0 2px rgba(64, 179, 216, .22);
+}
+html.dlg-modern #frmGetPrcSch input[readonly] { background: var(--vh-blue-l); }
+html.dlg-modern #frmGetPrcSch .chk { accent-color: var(--vh-blue); }
+html.dlg-modern #frmGetPrcSch .small { font-size: 11px; color: #4a7c8c; }
+
+/* ---------- Кнопки обоих окон: белые с голубой рамкой ---------- */
+html.dlg-modern .access-form .a-btn {
+    background: #fff;
+    border: 1px solid var(--vh-blue-b);
+    border-radius: .35rem;
+    color: var(--vh-ink);
+    font-weight: 600;
+}
+html.dlg-modern .access-form .a-btn:hover:not(:disabled) {
+    background: var(--vh-blue);
+    border-color: var(--vh-blue);
+    color: #fff;
+}
+html.dlg-modern .access-form .a-btn:active:not(:disabled) {
+    background: var(--vh-blue-d);
+    border-color: var(--vh-blue-d);
+    color: #fff;
+}
+
+/* ---------- frmGetInterval (interval.js, окно рисуется в родителе) ---------- */
+.dlg-modern.gi-ov { background: rgba(27, 92, 114, .30); }
+.dlg-modern .gi {
+    background: #fff;
+    border: 1px solid var(--vh-blue-b);
+    border-radius: .6rem;
+    overflow: hidden;
+    box-shadow: 0 16px 44px rgba(27, 92, 114, .30);
+    font: 14px system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+    color: #20414d;
+}
+.dlg-modern .gi-t {
+    background: linear-gradient(180deg, var(--vh-blue), var(--vh-blue-d));
+    color: #fff;
+    font: 600 12px system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+    padding: 5px 8px;
+}
+.dlg-modern .gi-fr { border: 1px solid var(--vh-blue-b); border-radius: .35rem; }
+.dlg-modern .gi-l { background: #fff; color: var(--vh-ink); }
+.dlg-modern .gi-b input[type=text] {
+    font: 14px system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+    border: 1px solid var(--vh-blue-b);
+    border-radius: .3rem;
+    background: #fff;
+    padding: 0 5px;
+    color: #20414d;
+}
+.dlg-modern .gi-b input[type=text]:focus {
+    outline: none;
+    border-color: var(--vh-blue);
+    box-shadow: 0 0 0 2px rgba(64, 179, 216, .22);
+}
+.dlg-modern .gi-b input[type=radio] { accent-color: var(--vh-blue); }
+.dlg-modern .gi-f { background: var(--vh-blue-l); border-top: 1px solid var(--vh-blue-b) !important; }
+.dlg-modern .gi-btn {
+    font: 12px system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+    background: #fff;
+    border: 1px solid var(--vh-blue-b);
+    border-radius: .35rem;
+    color: var(--vh-ink);
+    font-weight: 600;
+    cursor: pointer;
+}
+.dlg-modern .gi-btn:hover:not(:disabled) {
+    background: var(--vh-blue);
+    border-color: var(--vh-blue);
+    color: #fff;
+}
+.dlg-modern .gi-btn:disabled { background: #f7fbfd; border-color: #e3f0f5; color: #9db9c4; }
+.dlg-modern .gi-w { color: #8a6d1f; }

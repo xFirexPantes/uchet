@@ -51,7 +51,9 @@
             if (!document.getElementById('gi-css')) {
                 const s = document.createElement('style'); s.id = 'gi-css'; s.textContent = css; document.head.appendChild(s);
             }
-            const ov = document.createElement('div'); ov.className = 'gi-ov';
+            const ov = document.createElement('div');
+            // Современный вид экрана (.vh-modern) — окно в корпоративных цветах (css/dlg-modern.css)
+            ov.className = 'gi-ov' + (document.querySelector('.vh-modern') ? ' dlg-modern' : '');
             ov.innerHTML = `<div class="gi" role="dialog" aria-modal="true"><div class="gi-t">интервал дат</div>
 <div class="gi-b">
  <div class="gi-fr" style="left:4px;top:11px;width:119px;height:109px"></div>
