@@ -8,7 +8,8 @@
  * Поэтому здесь сохранены ВСЕ id формы Access, ТИПЫ полей (input/textarea — скрипт пишет в .value)
  * и ПОРЯДОК колонок таблицы (скрипт правит tr.cells[1] — примечание, tr.cells[16] — комментарий).
  *
- * Отличие от старого вида — только раскладка: вместо координат left/top — сетка Bootstrap 5.
+ * Отличие от старого вида — только раскладка: вместо координат left/top — сетка Bootstrap 5,
+ * корпоративные цвета (голубой/белый) и во всю ширину экрана (контейнер страницы не ограничиваем).
  * Переключение вида — кнопка «Как в Access» (?view=access), выбор запоминается в сессии.
  *
  * @var yii\web\View $this
@@ -27,13 +28,13 @@ $typeSch = (int)$filter->typeSch;
 ?>
 <div class="vh-modern">
 
-    <div class="d-flex align-items-start flex-wrap gap-3 mb-3">
+    <div class="vh-head d-flex align-items-start flex-wrap gap-3 mb-3">
         <div>
             <h1 class="h4 mb-1">Входящие счета</h1>
             <div class="text-secondary small">Список счетов за период и работа по выбранному счёту</div>
         </div>
         <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
-            <span class="badge text-bg-light border fs-6 fw-normal">Счетов: <?= count($rows) ?></span>
+            <span class="badge vh-count fs-6 fw-normal">Счетов: <?= count($rows) ?></span>
             <?php // Переключение вида: вид запоминается в сессии, фильтры сохраняются в адресе ?>
             <a class="btn btn-sm btn-outline-secondary" title="Вид как в форме Access"
                href="<?= Html::encode(Url::to(array_merge(['index'], Yii::$app->request->get(), ['view' => 'access']))) ?>">☰ Вид как в Access</a>
@@ -45,7 +46,7 @@ $typeSch = (int)$filter->typeSch;
     <?php endforeach ?>
 
     <?php // Фильтры — та же форма GET (butF_Click): имена полей как у формы Access ?>
-    <form method="get" action="<?= Url::to(['index']) ?>" class="card card-body mb-3" id="frmStat">
+    <form method="get" action="<?= Url::to(['index']) ?>" class="card card-body vh-filter mb-3" id="frmStat">
         <?= Html::hiddenInput('firma', $filter->firma, ['id' => 'cboFirma']) ?>
         <?= Html::hiddenInput('view', 'modern') ?>
         <?php if ($oneSch): ?>
@@ -126,11 +127,25 @@ $typeSch = (int)$filter->typeSch;
         </div>
     </form>
 
-    <div class="row g-3">
+    <?php // Отдельный блок под фильтром: работа со сроками поставки (от выбранного счёта не зависит) ?>
+    <div class="card vh-srok mb-3">
+        <div class="card-body d-flex align-items-center flex-wrap gap-2 py-2">
+            <strong class="vh-srok-title">Сроки поставки</strong>
+            <span class="text-secondary small d-none d-md-inline">Загрузка файла поставщика и выбор резервов КОМПЭЛ</span>
+            <div class="ms-auto d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="KompelSrokBut"
+                        title="Сроки поставки: загрузка файла поставщика">Сроки пост.</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="SpokKompelbtn"
+                        title="Сроки КОМПЭЛ: загрузка файла и выбор резервов">Сроки КОМПЭЛ</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 vh-body">
         <?php // ---------------- Список счетов (xListSch) ---------------- ?>
-        <div class="col-12 col-xl-8">
+        <div class="col-12 col-xl vh-list-col">
             <div class="card h-100">
-                <div class="card-header bg-white d-flex align-items-center gap-2 py-2">
+                <div class="card-header d-flex align-items-center gap-2 py-2">
                     <strong class="me-2">Счета</strong>
                     <span class="text-secondary small">Щелчок — выбрать, двойной — открыть карточку</span>
                     <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="usersrt"
@@ -146,9 +161,9 @@ $typeSch = (int)$filter->typeSch;
         </div>
 
         <?php // ---------------- Панель выбранного счёта ---------------- ?>
-        <div class="col-12 col-xl-4">
+        <div class="col-12 col-xl-auto vh-side">
             <div class="card">
-                <div class="card-header bg-white py-2">
+                <div class="card-header py-2">
                     <strong>Выбранный счёт</strong>
                 </div>
                 <div class="card-body">
@@ -193,8 +208,6 @@ $typeSch = (int)$filter->typeSch;
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="RepBut" title="Отчеты">Отчёт</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="GetPartSums" title="Долги: выгрузка в Excel по покупателю">Долги</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="butExel" title="Забрать товар">Тов</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="KompelSrokBut" title="Сроки поставки: загрузка файла поставщика">Сроки пост.</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="SpokKompelbtn" title="Сроки КОМПЭЛ: загрузка файла и выбор резервов">Сроки КОМПЭЛ</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="EditPrim" title="Изменить примечание">✎ Примечание</button>
                     </div>
 
@@ -275,28 +288,78 @@ $typeSch = (int)$filter->typeSch;
 </div>
 
 <?php
-// Стили вида: карточки, «липкая» шапка таблицы, компактные строки
+// Стили вида: корпоративные голубой/белый, карточки, «липкая» шапка таблицы, компактные строки
 $this->registerCss(<<<CSS
-.vh-modern .vh-sum { background:#f8f9fa; border-radius:.5rem; padding:.4rem .6rem; }
-.vh-modern .vh-sum-k { font-size:.7rem; text-transform:uppercase; letter-spacing:.03em; color:#6c757d; }
+/* Палитра: те же голубые, что в оформлении входа (site.css) */
+.vh-modern { --vh-blue:#40B3D8; --vh-blue-d:#2f8baa; --vh-blue-l:#eaf7fc; --vh-blue-b:#c5e7f2; --vh-ink:#1b5c72;
+    padding-bottom:1.5rem; }
+/* Вид на всю ширину экрана: контейнер страницы не ограничиваем (стиль подключён только этим экраном) */
+main > .container { max-width:none; padding-left:1rem; padding-right:1rem; }
+
+.vh-modern h1 { color:var(--vh-ink); }
+.vh-modern .vh-head { border-bottom:3px solid var(--vh-blue); padding-bottom:.6rem; }
+.vh-modern .vh-count { background:var(--vh-blue-l); color:var(--vh-ink); border:1px solid var(--vh-blue-b); }
+
+/* Карточки и их шапки */
+.vh-modern .card { border-color:var(--vh-blue-b); border-radius:.6rem; box-shadow:0 1px 3px rgba(64,179,216,.12); }
+.vh-modern .card-header { background:var(--vh-blue-l); border-bottom:1px solid var(--vh-blue-b); color:var(--vh-ink); }
+
+/* Фильтр и отдельный блок «Сроки поставки» под ним */
+.vh-modern .vh-filter { background:#fff; }
+.vh-modern .vh-srok { background:linear-gradient(90deg,var(--vh-blue-l),#fff 65%); }
+.vh-modern .vh-srok-title { color:var(--vh-ink); }
+
+/* Кнопки: основная — голубая, контурные — голубая рамка и заливка */
+.vh-modern .btn-primary { --bs-btn-bg:var(--vh-blue); --bs-btn-border-color:var(--vh-blue-d);
+    --bs-btn-hover-bg:var(--vh-blue-d); --bs-btn-hover-border-color:var(--vh-blue-d);
+    --bs-btn-active-bg:var(--vh-blue-d); --bs-btn-active-border-color:var(--vh-blue-d); }
+.vh-modern .btn-outline-secondary, .vh-modern .btn-outline-primary {
+    --bs-btn-color:var(--vh-ink); --bs-btn-border-color:var(--vh-blue-b);
+    --bs-btn-hover-color:#fff; --bs-btn-hover-bg:var(--vh-blue); --bs-btn-hover-border-color:var(--vh-blue);
+    --bs-btn-active-color:#fff; --bs-btn-active-bg:var(--vh-blue-d); --bs-btn-active-border-color:var(--vh-blue-d); }
+
+/* Суммы счёта */
+.vh-modern .vh-sum { background:var(--vh-blue-l); border-radius:.5rem; padding:.4rem .6rem; }
+.vh-modern .vh-sum-k { font-size:.7rem; text-transform:uppercase; letter-spacing:.03em; color:#4a7c8c; }
 .vh-modern .vh-sum-in { border:0; background:transparent; padding:0; font-size:1.05rem; font-weight:600; }
 .vh-modern .vh-sum-in:read-only { background:transparent; }
 /* Валюта счёта (InUEtxt ≠ «руб.»): в Access поле красилось в зелёный, здесь — мягкая плашка */
 .vh-modern .vh-sum-in.vh-sum-ue { background:#d1e7dd; color:#0f5132; border-radius:.25rem; padding:0 .25rem; }
-.vh-modern-scroll { max-height:calc(100vh - 320px); }
+
+/* Список счетов */
+.vh-modern-scroll { max-height:calc(100vh - 390px); }
 .vh-modern-scroll table { margin-bottom:0; font-size:.8125rem; }
-.vh-modern-scroll thead th { position:sticky; top:0; z-index:2; background:#f8f9fa; font-size:.7rem;
-    text-transform:uppercase; letter-spacing:.03em; color:#495057; font-weight:600; white-space:nowrap; }
+.vh-modern-scroll thead th { position:sticky; top:0; z-index:2; background:var(--vh-blue-l); font-size:.7rem;
+    text-transform:uppercase; letter-spacing:.03em; color:var(--vh-ink); font-weight:600; white-space:nowrap;
+    border-bottom:2px solid var(--vh-blue-b); }
 .vh-modern-scroll td { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; }
 .vh-modern-scroll tbody tr { cursor:pointer; }
-.vh-modern-scroll tbody tr.sel > * { box-shadow:inset 0 0 0 9999px rgba(13,110,253,.10); }
-.vh-modern-tabs .nav-link { font-size:.8125rem; padding:.35rem .5rem; }
+.vh-modern-scroll tbody tr:hover > * { background:#f6fbfd; }
+.vh-modern-scroll tbody tr.sel > * { box-shadow:inset 0 0 0 9999px rgba(64,179,216,.16); }
+
+/* Вкладки панели */
+.vh-modern-tabs { border-bottom-color:var(--vh-blue-b); }
+.vh-modern-tabs .nav-link { font-size:.75rem; padding:.3rem .3rem; color:var(--vh-ink); white-space:nowrap; }
+.vh-modern-tabs .nav-link.active { color:var(--vh-blue-d); font-weight:600;
+    border-color:var(--vh-blue-b) var(--vh-blue-b) #fff; }
+.vh-modern-tabs .badge { background:var(--vh-blue) !important; font-size:.65rem; }
+.vh-modern .tab-content { border-color:var(--vh-blue-b); }
+
 .vh-modern .table > :not(caption) > * > * { padding:.25rem .4rem; }
 .vh-modern-dogs { overflow:auto; max-height:10rem; }
 .vh-modern-dogs table { width:100%; border-collapse:collapse; font-size:.75rem; }
-.vh-modern-dogs th { background:#f8f9fa; font-weight:600; padding:.15rem .3rem; white-space:nowrap; }
-.vh-modern-dogs td { padding:.15rem .3rem; border-bottom:1px solid #f1f3f5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vh-modern-dogs th { background:var(--vh-blue-l); font-weight:600; padding:.15rem .3rem; white-space:nowrap; }
+.vh-modern-dogs td { padding:.15rem .3rem; border-bottom:1px solid #eef6f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .vh-modern-path { font-family:ui-monospace,Consolas,monospace; font-size:.75rem; }
+
+/* Панель счёта: на широких экранах фиксированная ширина, остальное забирает таблица */
+@media (min-width:1200px) { .vh-modern .vh-side { flex:0 0 auto; width:380px; } }
+
+/* Тёмная тема: не оставляем белые карточки */
+[data-bs-theme="dark"] .vh-modern .card, [data-bs-theme="dark"] .vh-modern .vh-filter { background:var(--bs-body-bg); }
+[data-bs-theme="dark"] .vh-modern .vh-srok { background:#10262e; }
+[data-bs-theme="dark"] .vh-modern .vh-sum { background:#10262e; }
+[data-bs-theme="dark"] .vh-modern-scroll thead th { background:#10262e; color:#9fd8ea; }
 CSS);
 
 // Помощники, настройки (window.VH) и скрипт поведения — общие для обоих видов экрана

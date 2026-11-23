@@ -83,7 +83,8 @@
 
     // --- Раздвигание столбцов (общий web/js/colresize.js). Ключ разный: в современном виде таблица
     // в узкой колонке и ширины подбираются заново, иначе ширины из вида «как в Access» её раздувают.
-    colResize(tbl, MODERN ? 'vhSchet.list.modern' : 'vhSchet.list');
+    // full — современный вид растягивает таблицу на всю ширину колонки (ключ modern2: старые узкие ширины сброшены).
+    colResize(tbl, MODERN ? 'vhSchet.list.modern2' : 'vhSchet.list', MODERN ? { full: true } : null);
     // usersrt: сортировка по пользователю (FillListSch(1): SortKey = 12, по возрастанию)
     byId('usersrt')?.addEventListener('click', () => sortBy(10, false));
 
