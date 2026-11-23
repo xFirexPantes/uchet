@@ -22,6 +22,9 @@
  * @var array|null $state  состояние экрана из правил (modules/…/services/ScreenRules): edit, show, hide, off, labels, locked.
  *                    Дополняет параметры выше. off [имя => почему] — подсказка неактивной кнопки, labels [имя => текст] —
  *                    подписи, которые меняет VBA, locked [имена] — поле видно и редактируемого вида, но неактивно (Enabled = False).
+ * @var array|null $only   если задан — рисуются только эти элементы (для современного вида: форма по зонам)
+ * @var array $except      имена элементов, которые не рисуются (остальные — как обычно)
+ * @var array|null $shift   ['l' => px, 't' => px] — сдвиг всех элементов к началу зоны
  */
 use app\components\AccessFormat as F;
 use yii\helpers\Html;
@@ -30,6 +33,8 @@ $show ??= []; $hide ??= []; $slots ??= []; $icons ??= []; $calc ??= []; $combos 
 $note ??= 'пока только просмотр';
 $edit ??= [];
 $state ??= null;
+$only ??= null; $except ??= []; $shift ??= null;
+$dx = (int)($shift['l'] ?? 0); $dy = (int)($shift['t'] ?? 0);
 $off = $state['off'] ?? []; $labels = $state['labels'] ?? []; $locked = $state['locked'] ?? [];
 if ($state) {
     $edit += $state['edit'] ?? [];
@@ -60,10 +65,25 @@ $groupOf = static function (array $o) use ($groups) {
     return null;
 };
 
-foreach ($layout as $c):
+// Порядок обхода: если задан $only — ровно в этом порядке (важно для потока, где порядок в DOM
+// задаёт порядок на экране), иначе как в раскладке. Координаты абсолютные, поэтому для обычной
+// формы порядок обхода на вид не влияет.
+$byName = [];
+foreach ($layout as $c) $byName[$c['n']] = $c;
+if ($only !== null) {
+    $seq = [];
+    foreach ($only as $n) if (isset($byName[$n])) $seq[] = $byName[$n];
+} else {
+    $seq = $layout;
+}
+
+foreach ($seq as $c):
     $n = $c['n'];
+    if ($only !== null && !in_array($n, $only, true)) continue;      // только элементы своей зоны
+    if (in_array($n, $except, true)) continue;                       // или всё, кроме чужих
     if ((!empty($c['hidden']) && !in_array($n, $show, true)) || in_array($n, $hide, true)) continue;
-    $style = "left:{$c['L']}px;top:{$c['T']}px;width:{$c['W']}px;height:{$c['H']}px;" . ($c['st'] ?? '');
+    $style = 'left:' . ($c['L'] - $dx) . 'px;top:' . ($c['T'] - $dy) . 'px;width:' . $c['W'] . 'px;height:' . $c['H'] . 'px;'
+        . ($c['st'] ?? '');
     $id = Html::encode($n);
 
     if (isset($slots[$n])) {   // подформа, список или работающая кнопка
