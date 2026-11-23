@@ -16,7 +16,8 @@ $cols = [
     ['Prim',      'Примечание',  null,       null,        307, ''],
     ['NSch',      'Номер счёта', 'Delayed',  null,         96, ''],
     ['DtaSch',    'Дата счёта',  'Delayed2', 'LngDtaSch',  80, ''],
-    ['closed',    'Закрыт',      'ColFZ275', null,         67, ''],
+    // Имя поля — Closed: процедура xp_GetAllSch отдаёт колонку с заглавной буквы
+    ['Closed',    'Закрыт',      'ColFZ275', null,         67, ''],
     ['Dta',       'Дата',        'OplCol',   'LngDta',     80, ''],
     ['Tme',       'Время',       'ColPth',   null,         53, ''],
     ['InControl', 'К',           null,       null,         40, ''],

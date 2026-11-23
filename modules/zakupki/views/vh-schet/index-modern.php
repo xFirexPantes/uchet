@@ -28,13 +28,11 @@ $typeSch = (int)$filter->typeSch;
 ?>
 <div class="vh-modern">
 
-    <div class="vh-head d-flex align-items-start flex-wrap gap-3 mb-3">
-        <div>
-            <h1 class="h4 mb-1">Входящие счета</h1>
-            <div class="text-secondary small">Список счетов за период и работа по выбранному счёту</div>
-        </div>
+    <?php // Шапка в одну строку: заголовок, счётчик и переключатель вида ?>
+    <div class="vh-head d-flex align-items-center flex-wrap gap-2 mb-2">
+        <h1 class="h5 mb-0" title="Список счетов за период и работа по выбранному счёту">Входящие счета</h1>
+        <span class="badge vh-count fw-normal">Счетов: <?= count($rows) ?></span>
         <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
-            <span class="badge vh-count fs-6 fw-normal">Счетов: <?= count($rows) ?></span>
             <?php // Переключение вида: вид запоминается в сессии, фильтры сохраняются в адресе ?>
             <a class="btn btn-sm btn-outline-secondary" title="Вид как в форме Access"
                href="<?= Html::encode(Url::to(array_merge(['index'], Yii::$app->request->get(), ['view' => 'access']))) ?>">☰ Вид как в Access</a>
@@ -46,7 +44,7 @@ $typeSch = (int)$filter->typeSch;
     <?php endforeach ?>
 
     <?php // Фильтры — та же форма GET (butF_Click): имена полей как у формы Access ?>
-    <form method="get" action="<?= Url::to(['index']) ?>" class="card card-body vh-filter mb-3" id="frmStat">
+    <form method="get" action="<?= Url::to(['index']) ?>" class="card card-body py-2 vh-filter mb-2" id="frmStat">
         <?= Html::hiddenInput('firma', $filter->firma, ['id' => 'cboFirma']) ?>
         <?= Html::hiddenInput('view', 'modern') ?>
         <?php if ($oneSch): ?>
@@ -111,27 +109,30 @@ $typeSch = (int)$filter->typeSch;
                 </div>
             </div>
 
-            <div class="col-auto ms-auto d-flex gap-2 flex-wrap">
+            <div class="col-auto ms-auto d-flex gap-2 flex-wrap align-items-center">
                 <button type="submit" class="btn btn-sm btn-primary">Найти</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="GetIntrv"
                         title="Выбрать интервал дат" <?= $oneSch ? 'disabled' : '' ?>>Интервал</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="flt"
                         title="Фильтр по продавцу и датам" <?= $oneSch ? 'style="display:none"' : '' ?>>Фильтр ▼</button>
             </div>
-        </div>
 
-        <?php // Признак применённого фильтра (Надпись78 + флажок) — только для чтения, как в Access ?>
-        <div class="form-check mt-2">
-            <input class="form-check-input" type="checkbox" disabled <?= $filterApplied ? 'checked' : '' ?>>
-            <label class="form-check-label small text-secondary">Применён фильтр</label>
+            <?php // Признак применённого фильтра (Надпись78 + флажок) — только для чтения, как в Access.
+                   // В той же строке, что и поля: экономит высоту ?>
+            <div class="col-auto d-flex align-items-center">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="fltApplied" disabled
+                           <?= $filterApplied ? 'checked' : '' ?>>
+                    <label class="form-check-label small text-secondary" for="fltApplied">Применён фильтр</label>
+                </div>
+            </div>
         </div>
     </form>
 
     <?php // Отдельный блок под фильтром: работа со сроками поставки (от выбранного счёта не зависит) ?>
-    <div class="card vh-srok mb-3">
-        <div class="card-body d-flex align-items-center flex-wrap gap-2 py-2">
-            <strong class="vh-srok-title">Сроки поставки</strong>
-            <span class="text-secondary small d-none d-md-inline">Загрузка файла поставщика и выбор резервов КОМПЭЛ</span>
+    <div class="card vh-srok mb-2">
+        <div class="card-body d-flex align-items-center flex-wrap gap-2 py-1 px-2">
+            <strong class="vh-srok-title" title="Загрузка файла поставщика и выбор резервов КОМПЭЛ">Сроки поставки</strong>
             <div class="ms-auto d-flex gap-2">
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="KompelSrokBut"
                         title="Сроки поставки: загрузка файла поставщика">Сроки пост.</button>
@@ -141,13 +142,13 @@ $typeSch = (int)$filter->typeSch;
         </div>
     </div>
 
-    <div class="row g-3 vh-body">
+    <div class="row g-2 vh-body">
         <?php // ---------------- Список счетов (xListSch) ---------------- ?>
         <div class="col-12 col-xl vh-list-col">
             <div class="card h-100">
-                <div class="card-header d-flex align-items-center gap-2 py-2">
-                    <strong class="me-2">Счета</strong>
-                    <span class="text-secondary small">Щелчок — выбрать, двойной — открыть карточку</span>
+                <div class="card-header d-flex align-items-center gap-2 py-1 px-2">
+                    <strong class="me-2" title="Щелчок — выбрать, двойной — открыть карточку">Счета</strong>
+                    <span class="text-secondary small d-none d-lg-inline">Щелчок — выбрать, двойной — открыть карточку</span>
                     <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="usersrt"
                             title="Сортировать по пользователю">↕ Пользователь</button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="btnShowLogPrices"
@@ -163,13 +164,13 @@ $typeSch = (int)$filter->typeSch;
         <?php // ---------------- Панель выбранного счёта ---------------- ?>
         <div class="col-12 col-xl-auto vh-side">
             <div class="card">
-                <div class="card-header py-2">
+                <div class="card-header py-1 px-2">
                     <strong>Выбранный счёт</strong>
                 </div>
-                <div class="card-body">
+                <div class="card-body py-2 px-2">
 
                     <?php // Сумма и остаток. Подпись «Сумма,руб./у.е.» меняет скрипт — id Надпись61 ?>
-                    <div class="row g-2 mb-3">
+                    <div class="row g-2 mb-2">
                         <div class="col-6">
                             <div class="vh-sum">
                                 <div class="vh-sum-k" id="Надпись61">Сумма,руб.</div>
@@ -185,7 +186,7 @@ $typeSch = (int)$filter->typeSch;
                     </div>
 
                     <?php // «Кто забирает» (WhoPick_AfterUpdate) — сохраняется сразу ?>
-                    <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <span class="small text-secondary">Кто забирает</span>
                         <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Кто забирает">
                             <?php foreach ([0 => 'Осташов', 1 => 'Наумов'] as $v => $t): ?>
@@ -196,7 +197,7 @@ $typeSch = (int)$filter->typeSch;
                     </div>
 
                     <?php // Действия: id те же, что в форме Access — к ним привязан vh-schet.js ?>
-                    <div class="d-flex flex-wrap gap-1 mb-3">
+                    <div class="d-flex flex-wrap gap-1 mb-2">
                         <button type="button" class="btn btn-sm btn-outline-primary" id="AddOpl" title="Добавить оплату">＋ Оплата</button>
                         <button type="button" class="btn btn-sm btn-outline-primary" id="AddOplToDo" title="Добавить строку «К оплате»">＋ К оплате</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="ClsByPlat" title="Изменить состояние счёта (закрыть к оплате)">✓ Закрыть</button>
@@ -235,7 +236,7 @@ $typeSch = (int)$filter->typeSch;
                             </button>
                         </li>
                     </ul>
-                    <div class="tab-content border border-top-0 rounded-bottom p-2 mb-3">
+                    <div class="tab-content border border-top-0 rounded-bottom p-2 mb-2">
                         <div class="tab-pane fade show active" id="paneOpl" role="tabpanel">
                             <table class="table table-sm mb-0"><tbody id="lstOplPrc"></tbody></table>
                             <button type="button" class="btn btn-sm btn-link text-danger px-0" id="DelOplPrc" title="Удалить выбранную оплату">− удалить оплату</button>
@@ -254,22 +255,22 @@ $typeSch = (int)$filter->typeSch;
                     </div>
 
                     <?php // Примечание и комментарий: двойной щелчок по комментарию — правка (frmShowPrim 83) ?>
-                    <div class="mb-2">
+                    <div class="mb-1">
                         <div class="small text-secondary mb-1">Примечание</div>
-                        <textarea class="form-control form-control-sm" id="txtPrim" rows="2" readonly></textarea>
+                        <textarea class="form-control form-control-sm" id="txtPrim" rows="1" readonly></textarea>
                     </div>
-                    <div class="mb-2">
+                    <div class="mb-1">
                         <div class="small text-secondary mb-1">Комментарий <span class="fw-normal">(двойной щелчок — изменить)</span></div>
-                        <textarea class="form-control form-control-sm" id="txtComm" rows="3" readonly style="cursor:pointer"></textarea>
+                        <textarea class="form-control form-control-sm" id="txtComm" rows="2" readonly style="cursor:pointer"></textarea>
                     </div>
 
                     <?php // Последний ответ: скрипт пишет дату (LastAnswDta) и текст (LastAnsw) ?>
-                    <div class="mb-2">
+                    <div class="mb-1">
                         <div class="small text-secondary mb-1 d-flex gap-2 align-items-center">
                             <span>Ответ</span>
                             <input type="text" class="form-control form-control-sm ms-auto w-auto" id="LastAnswDta" readonly>
                         </div>
-                        <textarea class="form-control form-control-sm" id="LastAnsw" rows="2" readonly></textarea>
+                        <textarea class="form-control form-control-sm" id="LastAnsw" rows="1" readonly></textarea>
                     </div>
 
                     <?php // Путь к счёту: двойной щелчок открывает файл или прикрепляет новый, Delete — удалить ?>
@@ -291,13 +292,28 @@ $typeSch = (int)$filter->typeSch;
 // Стили вида: корпоративные голубой/белый, карточки, «липкая» шапка таблицы, компактные строки
 $this->registerCss(<<<CSS
 /* Палитра: те же голубые, что в оформлении входа (site.css) */
-.vh-modern { --vh-blue:#40B3D8; --vh-blue-d:#2f8baa; --vh-blue-l:#eaf7fc; --vh-blue-b:#c5e7f2; --vh-ink:#1b5c72;
-    padding-bottom:1.5rem; }
+.vh-modern { --vh-blue:#40B3D8; --vh-blue-d:#2f8baa; --vh-blue-l:#eaf7fc; --vh-blue-b:#c5e7f2; --vh-ink:#1b5c72; }
 /* Вид на всю ширину экрана: контейнер страницы не ограничиваем (стиль подключён только этим экраном) */
 main > .container { max-width:none; padding-left:1rem; padding-right:1rem; }
 
+/* ---------- Каркас: три закреплённые области (фильтр, таблица, панель) ----------
+   Высота страницы фиксирована; каждая область прокручивается внутри себя, поэтому
+   раздвигание колонок или длинный текст в панели не сдвигают соседей и не тянут страницу. */
+.vh-modern { display:flex; flex-direction:column; height:calc(100vh - 96px); min-height:32rem; }
+.vh-modern .vh-head { flex:0 0 auto; }
+.vh-modern .vh-filter, .vh-modern .vh-srok { flex:0 0 auto; }
+.vh-modern .vh-body { flex:1 1 auto; min-height:0; flex-wrap:nowrap; }
+/* min-width:0 — ключ к независимости колонок: широкая таблица прокручивается внутри своей
+   области, а не распирает flex-строку и не выталкивает панель вниз (раньше .row переносился) */
+.vh-modern .vh-list-col, .vh-modern .vh-side { min-width:0; display:flex; }
+.vh-modern .vh-list-col > .card, .vh-modern .vh-side > .card {
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+.vh-modern .vh-list-col .vh-modern-scroll { flex:1 1 auto; min-height:0; max-height:none; overflow:auto; }
+/* Панель: прокручивается только тело карточки — шапка «Выбранный счёт» остаётся на месте */
+.vh-modern .vh-side > .card > .card-body { flex:1 1 auto; min-height:0; overflow-y:auto; }
+
 .vh-modern h1 { color:var(--vh-ink); }
-.vh-modern .vh-head { border-bottom:3px solid var(--vh-blue); padding-bottom:.6rem; }
+.vh-modern .vh-head { border-bottom:3px solid var(--vh-blue); padding-bottom:.35rem; }
 .vh-modern .vh-count { background:var(--vh-blue-l); color:var(--vh-ink); border:1px solid var(--vh-blue-b); }
 
 /* Карточки и их шапки */
@@ -319,15 +335,14 @@ main > .container { max-width:none; padding-left:1rem; padding-right:1rem; }
     --bs-btn-active-color:#fff; --bs-btn-active-bg:var(--vh-blue-d); --bs-btn-active-border-color:var(--vh-blue-d); }
 
 /* Суммы счёта */
-.vh-modern .vh-sum { background:var(--vh-blue-l); border-radius:.5rem; padding:.4rem .6rem; }
+.vh-modern .vh-sum { background:var(--vh-blue-l); border-radius:.5rem; padding:.3rem .5rem; }
 .vh-modern .vh-sum-k { font-size:.7rem; text-transform:uppercase; letter-spacing:.03em; color:#4a7c8c; }
-.vh-modern .vh-sum-in { border:0; background:transparent; padding:0; font-size:1.05rem; font-weight:600; }
+.vh-modern .vh-sum-in { border:0; background:transparent; padding:0; font-size:1rem; font-weight:600; }
 .vh-modern .vh-sum-in:read-only { background:transparent; }
 /* Валюта счёта (InUEtxt ≠ «руб.»): в Access поле красилось в зелёный, здесь — мягкая плашка */
 .vh-modern .vh-sum-in.vh-sum-ue { background:#d1e7dd; color:#0f5132; border-radius:.25rem; padding:0 .25rem; }
 
 /* Список счетов */
-.vh-modern-scroll { max-height:calc(100vh - 390px); }
 .vh-modern-scroll table { margin-bottom:0; font-size:.8125rem; }
 .vh-modern-scroll thead th { position:sticky; top:0; z-index:2; background:var(--vh-blue-l); font-size:.7rem;
     text-transform:uppercase; letter-spacing:.03em; color:var(--vh-ink); font-weight:600; white-space:nowrap;
@@ -354,6 +369,14 @@ main > .container { max-width:none; padding-left:1rem; padding-right:1rem; }
 
 /* Панель счёта: на широких экранах фиксированная ширина, остальное забирает таблица */
 @media (min-width:1200px) { .vh-modern .vh-side { flex:0 0 auto; width:380px; } }
+
+/* Узкий экран: панель уходит под таблицу, фиксированную высоту снимаем — обе области в потоке */
+@media (max-width:1199.98px) {
+    .vh-modern { height:auto; min-height:0; }
+    .vh-modern .vh-body { flex-wrap:wrap; }
+    .vh-modern .vh-list-col .vh-modern-scroll { max-height:calc(100vh - 340px); }
+    .vh-modern .vh-side > .card > .card-body { overflow-y:visible; }
+}
 
 /* Тёмная тема: не оставляем белые карточки */
 [data-bs-theme="dark"] .vh-modern .card, [data-bs-theme="dark"] .vh-modern .vh-filter { background:var(--bs-body-bg); }

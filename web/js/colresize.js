@@ -22,7 +22,6 @@ window.colResize = function (tbl, key, opts) {
         tbl.insertBefore(cg, tbl.firstChild);
     }
     const cols = [...cg.children];
-    const initial = cols.map(c => c.style.width);
     // full: тянем таблицу на всю ширину контейнера. Если ширины колонок почти совпадают с контейнером
     // (расхождение до 3%), колонки слегка сжимаются — таблица встаёт ровно по ширине без скролла.
     // Если колонки заметно шире — оставляем их ширину и появляется горизонтальный скролл.
@@ -32,7 +31,20 @@ window.colResize = function (tbl, key, opts) {
         tbl.style.width = (avail && avail >= sum * 0.97 ? avail : sum) + 'px';
     };
     tbl.style.tableLayout = 'fixed';
-    try { (JSON.parse(localStorage.getItem(key)) || []).forEach((w, i) => { if (cols[i] && w) cols[i].style.width = w + 'px'; }); } catch (e) {}
+    let saved = [];
+    try { saved = JSON.parse(localStorage.getItem(key)) || []; } catch (e) {}
+    saved.forEach((w, i) => { if (cols[i] && w) cols[i].style.width = w + 'px'; });
+    // full без сохранённых ширин: подгоняем исходные пропорционально под ширину области,
+    // иначе таблица шире экрана и сразу получает горизонтальный скролл
+    if (opts.full && !saved.length && tbl.parentElement) {
+        const avail = tbl.parentElement.clientWidth;
+        const sum = cols.reduce((s, c) => s + parseInt(c.style.width || 0), 0);
+        if (avail > 0 && sum > avail) {
+            const k = avail / sum;
+            cols.forEach(c => { c.style.width = Math.max(20, Math.floor(parseInt(c.style.width || 0) * k)) + 'px'; });
+        }
+    }
+    const initial = cols.map(c => c.style.width);        // двойной щелчок по краю — к этим ширинам
     fit();
     if (tbl.dataset.colResize) return;                    // обработчики уже повешены
     tbl.dataset.colResize = '1';
