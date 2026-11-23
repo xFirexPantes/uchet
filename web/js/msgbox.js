@@ -55,8 +55,8 @@
             addCss();
             const prevFocus = document.activeElement;
             const ov = document.createElement('div');
-            // Современный вид экрана (.vh-modern) — окно сообщения в корпоративных цветах (index-modern.php)
-            ov.className = 'mb-ov' + (document.querySelector('.vh-modern') ? ' vh-modern-dlg' : '');
+            // Современный вид экрана (.vh-modern) или карточки (.vh-card) — окно в корпоративных цветах
+            ov.className = 'mb-ov' + (document.querySelector('.vh-modern, .vh-card') ? ' vh-modern-dlg' : '');
             const w = document.createElement('div'); w.className = 'mb'; w.setAttribute('role', 'dialog'); w.setAttribute('aria-modal', 'true');
             const t = document.createElement('div'); t.className = 'mb-t'; t.textContent = title;
             const b = document.createElement('div'); b.className = 'mb-b';

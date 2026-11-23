@@ -11,9 +11,9 @@
         try {
             if (window.parent !== window && window.parent.accessDialog) return window.parent.accessDialog(new URL(url, location.href).href, width, height);
         } catch (e) { /* другой сайт — открываем у себя */ }
-        // Современный вид экрана (Bootstrap-раскладка .vh-modern): окно получает корпоративные стили
-        // из самого экрана (index-modern.php, селекторы .vh-modern-dlg). Остальные экраны — как раньше.
-        const MODERN = !!document.querySelector('.vh-modern');
+        // Современный вид экрана (.vh-modern) или карточки (.vh-card): окно получает корпоративные стили
+        // из самого экрана (index-modern.php, css/dlg-modern.css). Остальные экраны — как раньше.
+        const MODERN = !!document.querySelector('.vh-modern, .vh-card');
         return new Promise(resolve => {
             const ov = document.createElement('div');
             ov.className = 'picker-ov' + (MODERN ? ' vh-modern-dlg' : '');
