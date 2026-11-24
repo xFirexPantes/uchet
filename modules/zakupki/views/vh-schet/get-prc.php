@@ -26,7 +26,7 @@ $this->registerJsFile('@web/js/access-dialog.js');
 // dlg-modern ставится на <html> только если родитель — современный экран (.vh-modern)
 $this->registerJs(<<<'JS'
 try {
-    if (window.parent !== window && window.parent.document.querySelector('.vh-modern')) {
+    if (window.parent !== window && window.parent.document.querySelector('.vh-modern, .vh-card')) {
         document.documentElement.classList.add('dlg-modern');
     }
 } catch (e) { /* другой сайт или нет доступа — обычный вид Access */ }

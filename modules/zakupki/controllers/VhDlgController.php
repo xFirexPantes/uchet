@@ -239,15 +239,16 @@ class VhDlgController extends BaseController
     }
 
     /**
-     * Акты (tip 0) и отчёты (tip 1) по TP счёта (frmActsAndReps). Открытие файла ждёт путей к \\TSRV.
+     * Акты (tip 0) и отчёты (tip 1) по счёту (frmActsAndReps): в xp_GetRepsAndActs идёт ShcID.
+     * Открытие файла ждёт путей к \\TSRV.
      * @doc    vh-dlg/acts
      * @legacy frmActsAndReps: Form_Open, ExitBut_Click; frmStat: ActBut_Click, RepBut_Click
      */
     public function actionActs(int $id, int $tip = 0)
     {
-        $row = $this->sch($id);
+        $this->sch($id);                                   // счёт должен существовать
         $tip = $tip === 1 ? 1 : 0;
-        return $this->render('acts', ['tip' => $tip, 'rows' => (new VhDlgService())->acts((string)($row['TP'] ?? ''), $tip)]);
+        return $this->render('acts', ['tip' => $tip, 'rows' => (new VhDlgService())->acts($id, $tip)]);
     }
 
     /**
@@ -288,7 +289,7 @@ class VhDlgController extends BaseController
             default     => ['ok' => false, 'msg' => 'Неизвестное действие'],
         };
         if (!empty($res['row']) && $id > 0 && ($one = (new VhSchetService())->getOne($id))) {
-            $res['row_html'] = $this->renderPartial('/vh-schet/_list', ['rows' => [$one]]);
+            $res['row_html'] = $this->renderPartial('/vh-schet/_list-modern', ['rows' => [$one]]);
         }
         if (isset($res['list']) || $p('act') === 'TxtAdd' || $p('act') === 'TxtUpd') {
             $res['list'] ??= $svc->txtList((int)$r->post('tip') === 1 ? 1 : 0, $p('dflt'));

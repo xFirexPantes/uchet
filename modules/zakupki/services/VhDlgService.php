@@ -441,10 +441,14 @@ class VhDlgService
 
     // ---------------------------------------------------------------- frmActsAndReps
 
-    /** lst.RowSource = exec dbo.xp_GetRepsAndActs TP, 0|1 (TP — колонка «TP» строки счёта). */
-    public function acts(string $tp, int $tip): array
+    /**
+     * lst.RowSource = exec dbo.xp_GetRepsAndActs ShcID, 0|1.
+     * Процедура принимает номер счёта (@SchID int) — не TP: TP в строке списка строка, SQL падал
+     * на преобразовании nvarchar к int.
+     */
+    public function acts(int $shcId, int $tip): array
     {
-        return $this->exec('dbo.xp_GetRepsAndActs', [$tp, $tip === 1 ? 1 : 0])->queryAll(\PDO::FETCH_NUM);
+        return $this->exec('dbo.xp_GetRepsAndActs', [$shcId, $tip === 1 ? 1 : 0])->queryAll(\PDO::FETCH_NUM);
     }
 
     /**

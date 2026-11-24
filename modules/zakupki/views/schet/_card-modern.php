@@ -225,46 +225,7 @@ $this->registerCss(<<<CSS
 .vh-card .a-opt { accent-color:var(--vh-blue); }
 
 /* Окна поверх карточки (флажки, выбор, сообщения): msgbox.js, picker.js, access-dialog.js
-   ставят класс vh-modern-dlg, когда на странице есть .vh-card. Палитра та же, что у карточки. */
-.vh-modern-dlg { --vh-blue:#40B3D8; --vh-blue-d:var(--vh-blue); --vh-blue-l:#eaf7fc; --vh-blue-b:#c5e7f2; --vh-ink:#1b5c72; }
-.vh-modern-dlg.picker-ov, .vh-modern-dlg.mb-ov { background:rgba(27,92,114,.30); }
-
-/* Окно выбора и обёртка диалога (iframe): белая карточка с голубой шапкой */
-.vh-modern-dlg .picker { display:flex; flex-direction:column; overflow:hidden !important; background:#fff;
-    border:1px solid var(--vh-blue-b); border-radius:.6rem; box-shadow:0 16px 44px rgba(27,92,114,.30);
-    max-height:calc(100vh - 16px); }
-.vh-modern-dlg .picker-body { flex:1 1 auto; min-height:0; overflow:auto; background:#fff; }
-.vh-modern-dlg .picker-title { flex:0 0 auto; background:linear-gradient(180deg,var(--vh-blue),var(--vh-blue-d));
-    color:#fff; padding:.4rem .6rem; font:600 .85rem/1.3 system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; }
-.vh-modern-dlg .picker-title > span { padding-left:.15rem; }
-.vh-modern-dlg .picker-x { background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.5); color:#fff;
-    width:22px; height:20px; border-radius:.25rem; font-size:11px; line-height:1; cursor:pointer; }
-.vh-modern-dlg .picker-x:hover { background:rgba(255,255,255,.34); }
-.vh-modern-dlg .picker-top { background:#fff; border-bottom:1px solid var(--vh-blue-b); }
-.vh-modern-dlg .picker-top input { border:1px solid var(--vh-blue-b); border-radius:.3rem; color:var(--vh-ink);
-    font:13px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; padding:0 .35rem; }
-.vh-modern-dlg .picker-top input:focus { outline:none; border-color:var(--vh-blue); box-shadow:0 0 0 2px rgba(64,179,216,.22); }
-.vh-modern-dlg .picker-list { flex:0 1 auto; min-height:5rem; border:1px solid var(--vh-blue-b); border-radius:.3rem; }
-.vh-modern-dlg .picker-foot { background:var(--vh-blue-l); border-top:1px solid var(--vh-blue-b); }
-.vh-modern-dlg .picker .a-btn { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.35rem; color:var(--vh-ink); }
-.vh-modern-dlg .picker .a-btn:hover:not(:disabled) { background:var(--vh-blue); border-color:var(--vh-blue); color:#fff; }
-.vh-modern-dlg .picker .a-grid th { background:var(--vh-blue-l); color:var(--vh-ink); border-color:var(--vh-blue-b); }
-.vh-modern-dlg .picker .a-grid td { border-color:#e6f2f7; }
-.vh-modern-dlg .picker .a-grid tr.sel td { background:var(--vh-blue) !important; color:#fff !important; }
-
-/* Окна сообщений (msgbox.js): белая карточка, голубая шапка, кнопки-контур */
-.vh-modern-dlg .mb { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.6rem; overflow:hidden;
-    box-shadow:0 16px 44px rgba(27,92,114,.30); font:13px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; }
-.vh-modern-dlg .mb-t { background:linear-gradient(180deg,var(--vh-blue),var(--vh-blue-d)); padding:.4rem .7rem;
-    font-size:.85rem; font-weight:600; }
-.vh-modern-dlg .mb-i.info, .vh-modern-dlg .mb-i.question { background:var(--vh-blue); }
-.vh-modern-dlg .mb-x { color:#20414d; }
-.vh-modern-dlg .mb-f button { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.35rem;
-    height:26px; color:var(--vh-ink); font-size:12px; }
-.vh-modern-dlg .mb-f button:hover { background:var(--vh-blue); border-color:var(--vh-blue); color:#fff; }
-.vh-modern-dlg .mb-in, .vh-modern-dlg .mb-sel { border:1px solid var(--vh-blue-b); border-radius:.3rem; padding:3px 4px; }
-.vh-modern-dlg .mb-in:focus, .vh-modern-dlg .mb-sel:focus { outline:none; border-color:var(--vh-blue);
-    box-shadow:0 0 0 2px rgba(64,179,216,.22); }
+   ставят класс vh-modern-dlg — их оформление общее, в css/dlg-modern.css. */
 CSS);
 
 // Вкладки: переключение без перезагрузки. Ширины столбцов скрытых таблиц уже заданы в colgroup,

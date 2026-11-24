@@ -14,8 +14,18 @@ use yii\web\View;
 $this->title = 'Список элементов, требующих внимания';
 $this->registerCssFile('@web/css/access-form.css');
 $this->registerCssFile('@web/css/colresize.css');
+$this->registerCssFile('@web/css/dlg-modern.css');          // корпоративные цвета, когда окно открыто поверх современного вида
 $this->registerJsFile('@web/js/colresize.js');
 $this->registerJsFile('@web/js/access-dialog.js');
+// dlg-modern ставится на <html> только если родитель — современный экран (.vh-modern);
+// скрипт в head: класс готов до отрисовки, окно не мигает бежевым
+$this->registerJs(<<<'JS'
+try {
+    if (window.parent !== window && window.parent.document.querySelector('.vh-modern, .vh-card')) {
+        document.documentElement.classList.add('dlg-modern');
+    }
+} catch (e) { /* другой сайт или нет доступа — обычный вид Access */ }
+JS, \yii\web\View::POS_HEAD);
 $widths = [120, 120, 120, 187, 80, 80, 80, 80];
 $cols = $rows ? array_slice(array_keys($rows[0]), 0, 8) : [];
 ?>

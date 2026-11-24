@@ -1,11 +1,11 @@
-/* Корпоративное оформление окон ввода, которые не входят в vh-dlg:
-   prim.php (frmShowPrim — примечание и комментарий), get-prc.php (frmGetPrcSch), interval.js (frmGetInterval).
+/* Корпоративное оформление окон (модалок), которые открываются кнопками экранов:
+   prim.php (frmShowPrim — примечание и комментарий), get-prc.php (frmGetPrcSch),
+   who-buy.php (frmFndPR), pos-elem.php, pos-detal.php, fnd-elem.php (окна карточки счёта),
+   interval.js (frmGetInterval), а также обёртки окон access-dialog.js / picker.js / msgbox.js.
 
-   Класс dlg-modern ставится только когда окно открыто поверх современного экрана «Входящие счета»
-   (.vh-modern): в iframe — на <html> (скрипт в head окна), у окон в родителе (interval.js) — на оверлей.
-   На экране «как в Access» класс не ставится, и окна выглядят как раньше.
-
-   Каркас окна тот же, что у страницы: закреплённые шапка и футер, прокручивается только тело. */
+   Класс dlg-modern ставится, когда окно открыто поверх современного экрана (.vh-modern) или
+   карточки счёта (.vh-card): в iframe — на <html> (скрипт в head окна), у окон в родителе
+   (interval.js) и у обёрток — на оверлей. */
 
 html.dlg-modern,
 .dlg-modern {
@@ -95,6 +95,92 @@ html.dlg-modern .access-form .a-btn:active:not(:disabled) {
     border-color: var(--vh-blue-d);
     color: #fff;
 }
+
+/* ---------- Общие элементы форм Access внутри окна ----------
+   Класс dlg-modern ставится, когда окно открыто поверх современного экрана или карточки:
+   подписи, рамки, поля, кнопки и таблицы подформ — в корпоративных цветах. */
+html.dlg-modern .access-form { font:12px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; color:#20414d; }
+html.dlg-modern .access-form .a-lbl { color:var(--vh-ink); }
+html.dlg-modern .access-form .a-frame { border:1px solid var(--vh-blue-b); border-radius:.35rem; }
+html.dlg-modern .access-form .a-txt input, html.dlg-modern .access-form .a-txt textarea,
+html.dlg-modern .access-form .a-select select { border:1px solid var(--vh-blue-b); border-radius:.3rem;
+    background:#fff; padding:0 4px; }
+html.dlg-modern .access-form .a-txt input:focus, html.dlg-modern .access-form .a-txt textarea:focus,
+html.dlg-modern .access-form .a-select select:focus { outline:none; border-color:var(--vh-blue);
+    box-shadow:0 0 0 2px rgba(64,179,216,.22); }
+html.dlg-modern .access-form .a-txt.transp input, html.dlg-modern .access-form .a-txt.transp textarea {
+    border-color:transparent; background:transparent; }
+html.dlg-modern .access-form .a-combo span { background:var(--vh-blue-l); color:var(--vh-ink);
+    border-left:1px solid var(--vh-blue-b); }
+html.dlg-modern .access-form .a-btn { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.35rem;
+    color:var(--vh-ink); font-weight:600; }
+html.dlg-modern .access-form .a-btn:hover:not(:disabled) { background:var(--vh-blue); border-color:var(--vh-blue); color:#fff; }
+html.dlg-modern .access-form .a-btn:active:not(:disabled), html.dlg-modern .access-form .a-btn.on {
+    background:var(--vh-blue-d); border-color:var(--vh-blue-d); color:#fff; }
+html.dlg-modern .access-form .a-btn:disabled { background:#f7fbfd; border-color:#e3f0f5; color:#9db9c4; }
+html.dlg-modern .access-form .a-btn.big { font-size:16px; }
+html.dlg-modern .access-form .a-list, html.dlg-modern .access-form .a-slot {
+    background:#fff; border:1px solid var(--vh-blue-b); border-radius:.35rem; }
+html.dlg-modern .dlg-sub { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.35rem; }
+html.dlg-modern .dlg-ft { background:var(--vh-blue-l); border-top:1px solid var(--vh-blue-b); }
+html.dlg-modern .access-form .a-grid th { background:var(--vh-blue-l); color:var(--vh-ink); font-weight:600;
+    border-color:var(--vh-blue-b); }
+html.dlg-modern .access-form .a-grid td { border-color:#e6f2f7; color:#20414d; }
+html.dlg-modern .access-form .a-grid tr.sel td { background:var(--vh-blue) !important; color:#fff !important; }
+html.dlg-modern .access-form .a-grid tr:hover:not(.sel) td { background:#f6fbfd; }
+html.dlg-modern .access-form .a-opt { accent-color:var(--vh-blue); }
+
+/* ---------- Обёртка окна в родителе: access-dialog.js, picker.js, msgbox.js ----------
+   Скрипты ставят класс vh-modern-dlg, когда на странице есть современный экран (.vh-modern)
+   или карточка счёта (.vh-card). Палитра та же, что у экрана. */
+.vh-modern-dlg { --vh-blue:#40B3D8; --vh-blue-d:var(--vh-blue); --vh-blue-l:#eaf7fc; --vh-blue-b:#c5e7f2; --vh-ink:#1b5c72; }
+.vh-modern-dlg.picker-ov, .vh-modern-dlg.mb-ov { background:rgba(27,92,114,.30); }
+
+/* Окно выбора и обёртка диалога (iframe): белая карточка с голубой шапкой */
+.vh-modern-dlg .picker { display:flex; flex-direction:column; overflow:hidden !important; background:#fff;
+    border:1px solid var(--vh-blue-b); border-radius:.6rem; box-shadow:0 16px 44px rgba(27,92,114,.30);
+    max-height:calc(100vh - 16px); }
+.vh-modern-dlg .picker-body { flex:1 1 auto; min-height:0; overflow:auto; background:#fff; }
+.vh-modern-dlg .picker-title { flex:0 0 auto; background:linear-gradient(180deg,var(--vh-blue),var(--vh-blue-d));
+    color:#fff; padding:.4rem .6rem; font:600 .85rem/1.3 system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; }
+.vh-modern-dlg .picker-title > span { padding-left:.15rem; }
+.vh-modern-dlg .picker-x { background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.5); color:#fff;
+    width:22px; height:20px; border-radius:.25rem; font-size:11px; line-height:1; cursor:pointer; }
+.vh-modern-dlg .picker-x:hover { background:rgba(255,255,255,.34); }
+.vh-modern-dlg .picker-top { background:#fff; border-bottom:1px solid var(--vh-blue-b); }
+.vh-modern-dlg .picker-top input { border:1px solid var(--vh-blue-b); border-radius:.3rem; color:var(--vh-ink);
+    font:13px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; padding:0 .35rem; }
+.vh-modern-dlg .picker-top input:focus { outline:none; border-color:var(--vh-blue); box-shadow:0 0 0 2px rgba(64,179,216,.22); }
+.vh-modern-dlg .picker-list { flex:0 1 auto; min-height:5rem; border:1px solid var(--vh-blue-b); border-radius:.3rem; }
+.vh-modern-dlg .picker-foot { background:var(--vh-blue-l); border-top:1px solid var(--vh-blue-b); }
+.vh-modern-dlg .picker .a-btn { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.35rem; color:var(--vh-ink); }
+.vh-modern-dlg .picker .a-btn:hover:not(:disabled) { background:var(--vh-blue); border-color:var(--vh-blue); color:#fff; }
+.vh-modern-dlg .picker .a-grid th { background:var(--vh-blue-l); color:var(--vh-ink); border-color:var(--vh-blue-b); }
+.vh-modern-dlg .picker .a-grid td { border-color:#e6f2f7; }
+.vh-modern-dlg .picker .a-grid tr.sel td { background:var(--vh-blue) !important; color:#fff !important; }
+
+/* Окна сообщений (msgbox.js): белая карточка, голубая шапка, кнопки-контур */
+.vh-modern-dlg .mb { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.6rem; overflow:hidden;
+    box-shadow:0 16px 44px rgba(27,92,114,.30); font:13px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; }
+.vh-modern-dlg .mb-t { background:linear-gradient(180deg,var(--vh-blue),var(--vh-blue-d)); padding:.4rem .7rem;
+    font-size:.85rem; font-weight:600; }
+.vh-modern-dlg .mb-i.info, .vh-modern-dlg .mb-i.question { background:var(--vh-blue); }
+.vh-modern-dlg .mb-x { color:#20414d; }
+.vh-modern-dlg .mb-f button { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.35rem;
+    height:26px; color:var(--vh-ink); font-size:12px; }
+.vh-modern-dlg .mb-f button:hover { background:var(--vh-blue); border-color:var(--vh-blue); color:#fff; }
+.vh-modern-dlg .mb-in, .vh-modern-dlg .mb-sel { border:1px solid var(--vh-blue-b); border-radius:.3rem; padding:3px 4px; }
+.vh-modern-dlg .mb-in:focus, .vh-modern-dlg .mb-sel:focus { outline:none; border-color:var(--vh-blue);
+    box-shadow:0 0 0 2px rgba(64,179,216,.22); }
+
+/* ---------- frmFndPR (who-buy.php): список «требующих внимания» ---------- */
+html.dlg-modern #frmFndPR .lst { border:1px solid var(--vh-blue-b); border-radius:.35rem; }
+html.dlg-modern #frmFndPR th { background:var(--vh-blue-l); color:var(--vh-ink); font-weight:600;
+    border-color:var(--vh-blue-b); }
+html.dlg-modern #frmFndPR td { border-color:#e6f2f7; color:#20414d; }
+html.dlg-modern #frmFndPR tr.sel td { background:var(--vh-blue) !important; color:#fff !important; }
+html.dlg-modern #frmFndPR tr:hover:not(.sel) td { background:#f6fbfd; }
+html.dlg-modern #frmFndPR .ft { background:var(--vh-blue-l); border-top:1px solid var(--vh-blue-b); }
 
 /* ---------- frmGetInterval (interval.js, окно рисуется в родителе) ---------- */
 .dlg-modern.gi-ov { background: rgba(27, 92, 114, .30); }

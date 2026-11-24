@@ -268,6 +268,7 @@ $badges = ($closed ? '<span class="badge b-red">Закрыт</span>' : '<span cl
 
 $this->registerCssFile('@web/css/access-form.css');
 $this->registerCssFile('@web/css/colresize.css');
+$this->registerCssFile('@web/css/dlg-modern.css');   // обёртки окон (выбор, сообщения, диалоги)
 $this->registerJsFile('@web/js/colresize.js');
 $this->registerJsFile('@web/js/picker.js');
 $this->registerJsFile('@web/js/access-dialog.js');

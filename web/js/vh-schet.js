@@ -1,7 +1,6 @@
 /**
- * Экран «Входящие счета» (форма Access frmStat), вид «как в Access».
- * Раньше скрипт лежал прямо в modules/zakupki/views/vh-schet/index.php (heredoc) — вынесен сюда,
- * чтобы один и тот же код работы со счётом могли использовать оба вида экрана (старый и современный).
+ * Экран «Входящие счета» (форма Access frmStat) — современный вид.
+ * Скрипт вынесен из шаблона: разметка страницы — обычный HTML (vh-schet/index-modern.php).
  *
  * Настройки приходят из шаблона: перед подключением файла экран кладёт в window.VH объект
  *   { panelUrl, actUrl, primUrl, getPrcUrl, whoBuyUrl, partUrl, pthUrl, fltUrl, chgUrl, mailUrl,
@@ -58,7 +57,7 @@
     // --- Клик по заголовку. xListSch_ColumnClick: колонка «Оплата» (hd = 12) — не сортировка,
     // а RemoveDataSch: скрыть строки с заполненным HowOpl (оставить только неоплаченные), OnlyNeopl.
     // Повторный щелчок возвращает полный список.
-    const COL_OPL = 11;                                   // индекс колонки «Оплата» в _list.php
+    const COL_OPL = 11;                                   // индекс колонки «Оплата» в _list-modern.php
     let onlyNeopl = false;
     function removeDataSch() {
         onlyNeopl = !onlyNeopl;
@@ -82,9 +81,9 @@
     });
 
     // --- Раздвигание столбцов (общий web/js/colresize.js). Ключ разный: в современном виде таблица
-    // в узкой колонке и ширины подбираются заново, иначе ширины из вида «как в Access» её раздувают.
-    // full — современный вид растягивает таблицу на всю ширину колонки (ключ modern2: старые узкие ширины сброшены).
-    colResize(tbl, MODERN ? 'vhSchet.list.modern2' : 'vhSchet.list', MODERN ? { full: true } : null);
+    // растягивается на всю ширину и колонки держат заданную пропорцию (ключ modern3 — ширины от
+    // прежней раскладки не применяются).
+    colResize(tbl, MODERN ? 'vhSchet.list.modern3' : 'vhSchet.list', MODERN ? { full: true } : null);
     // usersrt: сортировка по пользователю (FillListSch(1): SortKey = 12, по возрастанию)
     byId('usersrt')?.addEventListener('click', () => sortBy(10, false));
 
