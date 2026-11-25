@@ -187,6 +187,19 @@ $this->registerCss(<<<CSS
 .vh-checks.two { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.35rem 1rem; }
 .vh-check { display:inline-flex; align-items:center; gap:.35rem; font-size:.8rem; cursor:pointer; white-space:nowrap; }
 .vh-check input:disabled + span { color:#9db9c4; }
+/* Переключатели (тип счёта, «кто забирает») — тем же видом, что флажки */
+.vh-radio { display:inline-flex; align-items:center; gap:.35rem; font-size:.8rem; cursor:pointer; white-space:nowrap; margin:0; }
+.vh-radio input { accent-color:var(--vh-blue); margin:0; }
+.vh-radio input:disabled + span { color:#9db9c4; }
+.vh-radios { display:flex; flex-wrap:wrap; gap:.2rem .9rem; margin-top:.15rem; }
+/* Узкое поле для свободного ввода (даты массовой установки) */
+.vh-inp-xs { width:96px; }
+/* Свободные поля в панелях (не привязанные к записи счёта) */
+.vh-inp { height:22px; padding:0 .3rem; border:1px solid var(--vh-blue-b); border-radius:.25rem;
+    background:#fff; color:#20414d; font:12px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; box-sizing:border-box; }
+.vh-inp:focus { outline:none; border-color:var(--vh-blue); box-shadow:0 0 0 2px rgba(64,179,216,.22); }
+/* Пары «подпись + значение» в шапке (дата, кто, ShcID) */
+.vh-stamp .vh-pair { display:inline-flex; align-items:center; gap:.25rem; }
 .vh-check-pair { display:inline-flex; align-items:center; gap:.35rem; }
 /* Ячейка сетки «подпись + поле» на всю ширину (блок флажков под полями) */
 .vh-span { grid-column:1/-1; }

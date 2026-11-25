@@ -166,7 +166,7 @@ $this->registerJs(<<<JS
         if (!tr) { msgBox('Выберите элемент для редактирования'); return; }
         act('EdtPos', { pos: tr.dataset.id }).then(res => {
             if (!res || !res.mode) return;
-            accessDialog($posElemUrl + '&pos=' + encodeURIComponent(tr.dataset.id) + '&mode=' + res.mode, 640, 442)
+            accessDialog($posElemUrl + '&pos=' + encodeURIComponent(tr.dataset.id) + '&mode=' + res.mode, 700, 480)
                 .then(r => { if (r.reload) location.reload(); });
         });
     });
@@ -177,7 +177,7 @@ $this->registerJs(<<<JS
         document.activeElement?.blur();
         const res = await act('butDob');
         if (res && res.det) {                                  // счёт на детали: окно позиции frmScetaDetalAdd (IDPos 0), потом UpdateListDetal
-            const r = await accessDialog($posDetalUrl + '&pos=0', 647, 135);
+            const r = await accessDialog($posDetalUrl + '&pos=0', 660, 250);
             if (r.reload) location.reload();
             return;
         }
@@ -189,7 +189,7 @@ $this->registerJs(<<<JS
         if (!f.value) return;
         const chk = await act('AddPos', { sklad: f.value });
         if (!chk || !chk.sklad) return;
-        const r = await accessDialog($posElemUrl + '&mode=5&sklad=' + encodeURIComponent(chk.sklad), 640, 442);
+        const r = await accessDialog($posElemUrl + '&mode=5&sklad=' + encodeURIComponent(chk.sklad), 700, 480);
         location.reload();                                    // UpdateList + RecordSource: перечитать в любом случае, как Access
     });
 

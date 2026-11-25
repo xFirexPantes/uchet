@@ -1,14 +1,18 @@
 <?php
 /**
  * Позиция счёта на элементы (frmPosInput): правка (режимы 3, 7) и новая позиция (режим 5) — диалог поверх карточки.
- * Раскладка: layout/frmPosInput.php. Поля свободные: состояние окна держит скрипт, суммы и проверки считает сервер
+ *
+ * Обычная разметка (.vh-dlg): слева — поставка, в центре — цены и суммы, справа — склад. Координаты Access
+ * не используются. Поля свободные: состояние окна держит скрипт, суммы и проверки считает сервер
  * (SchetPosElemService), как процедуры в VBA формы.
  *
  * @var yii\web\View $this
  * @var array $d  из SchetPosElemService::open
  */
+use app\components\AccessFormat as F;
 use app\modules\zakupki\services\SchetPosElemService as P;
 use app\modules\zakupki\services\ScreenRules;
+use yii\helpers\Html;
 use yii\helpers\Json;
 use yii\helpers\Url;
 use yii\web\View;
@@ -20,9 +24,8 @@ $st = ScreenRules::posElem($v);
 $initHide = $st['hide'];
 $st['hide'] = [];
 $this->title = 'Позиция счёта';
-$layout = require __DIR__ . '/layout/frmPosInput.php';
-$w = 0; $h = 0;
-foreach ($layout as $c) { $w = max($w, $c['L'] + $c['W']); $h = max($h, $c['T'] + $c['H']); }
+$locked = array_flip($st['locked']);                                // Enabled = False: поле видно, но не меняется
+$hideNow = array_unique(array_merge($initHide, ['txtPriceOpt']));   // чтобы поля не мигали до запуска скрипта
 $money = fn($x) => number_format((float)$x, 2, ',', '');
 $calc = $d['stock'] + [
     'txtKolich' => P::n($v['kol']), 'txtPriceOpt' => P::n($v['priceOpt']), 'txtPriceRub' => $money($v['priceRub']),
@@ -36,15 +39,38 @@ $calc = $d['stock'] + [
 $map = fn($l) => array_combine(array_column($l, 0), array_column($l, 1)) ?: [];
 $ndsMap = [];
 foreach ($d['ndsList'] as [$val]) $ndsMap[P::n((float)str_replace(',', '.', $val))] = $val;
-$combos = ['txtNDS' => $ndsMap, 'PostOKEI' => $map($d['okeiList']), 'PostOKEI2' => $map($d['okei2List'])];
-$slots = [
-    'butSave'  => '<button type="button" class="a-btn" id="butSave" title="Сохранить">✓</button>',
-    'butExit'  => '<button type="button" class="a-btn" id="butExit" title="Закрыть без сохранения">✕</button>',
-    'Кнопка86' => '<button type="button" class="a-btn" id="Кнопка86" title="Деньги в рублях / опт в $">⇄</button>',
-];
-foreach (['IncNDS', 'ManualFlg', 'WOQuest'] as $n) {
-    $slots[$n] = '<input type="checkbox" class="a-opt" id="' . $n . '"' . ($calc[$n] ? ' checked' : '') . ' style="position:static;width:100%;height:100%;margin:0">';
-}
+/** Поле ввода: $o[r] — число справа, $o[ro] — только показ, $o[type] — тип, $o[title] — подсказка. */
+$txt = static function (string $id, string $val, array $o = []) use ($locked): string {
+    $a = ' class="vh-dlg-inp' . (!empty($o['r']) ? ' r' : '') . (empty($o['ro']) ? ' ed' : '') . '"'
+        . ' type="' . ($o['type'] ?? 'text') . '" id="' . $id . '" value="' . Html::encode($val) . '"';
+    if (!empty($o['ro'])) $a .= ' readonly';
+    elseif (isset($locked[$id])) $a .= ' disabled';
+    if (!empty($o['title'])) $a .= ' title="' . Html::encode($o['title']) . '"';
+    return '<input' . $a . '>';
+};
+/** Список: значение могло не загрузиться из процедуры — тогда оставляем его одной строкой. */
+$sel = static function (string $id, string $val, array $opts) use ($locked): string {
+    if (!isset($opts[$val]) && $val !== '') $opts = [$val => $val] + $opts;
+    $h = '<select class="vh-dlg-inp ed" id="' . $id . '"' . (isset($locked[$id]) ? ' disabled' : '') . '>';
+    foreach ($opts as $k => $t) {
+        $h .= '<option value="' . Html::encode((string)$k) . '"' . ((string)$k === $val ? ' selected' : '') . '>' . Html::encode((string)$t) . '</option>';
+    }
+    return $h . '</select>';
+};
+/** Флажок с подписью: $o[hide] — прячется вместе с подписью, $o[lid] — id подписи, $o[off] — только показ. */
+$chk = static function (string $id, string $label, bool $on, array $o = []): string {
+    return '<label class="vh-pe-chk' . (!empty($o['hide']) ? ' a-txt' : '') . '"' . ($o['style'] ?? '') . '>'
+        . '<input type="checkbox" id="' . $id . '"' . ($on ? ' checked' : '') . (!empty($o['off']) ? ' disabled' : '') . '>'
+        . '<span' . (!empty($o['lid']) ? ' id="' . $o['lid'] . '"' : '') . '>' . $label . '</span></label>';
+};
+/** Строка «подпись — поле»: $o[hide] — прячется целиком, $o[lid] — id подписи, $o[style] — скрыть до запуска скрипта. */
+$line = static function (string $label, string $field, array $o = []): string {
+    return '<div class="vh-pe-row' . (!empty($o['hide']) ? ' a-txt' : '') . '"' . ($o['style'] ?? '') . '>'
+        . '<label class="vh-pe-lbl"' . (!empty($o['lid']) ? ' id="' . $o['lid'] . '"' : '') . '>' . $label . '</label>'
+        . $field . '</div>';
+};
+$style = static fn(string $id) => in_array($id, $hideNow, true) ? ' style="display:none"' : '';
+$stock = static fn(string $f, ?string $fmt = null, ?int $dp = null): string => F::value($calc[$f] ?? null, $fmt, $dp);
 $this->registerCssFile('@web/css/access-form.css');
 $this->registerCssFile('@web/css/dlg-modern.css');          // корпоративные цвета, когда окно открыто поверх карточки счёта
 $this->registerJsFile('@web/js/access-dialog.js');
@@ -59,11 +85,92 @@ try {
 } catch (e) { /* другой сайт или нет доступа — обычный вид Access */ }
 JS, View::POS_HEAD);
 ?>
-<div class="access-form" id="frmPosInput" style="width:<?= $w + 4 ?>px;height:<?= $h + 4 ?>px">
-<?= $this->render('@app/views/access/_form', [
-    'layout' => $layout, 'rec' => [], 'calc' => $calc, 'combos' => $combos, 'slots' => $slots, 'state' => $st,
-    'note' => 'ещё не перенесено',
-]) ?>
+<div class="vh-dlg" id="frmPosInput">
+    <?php // Служебная строка: откуда позиция (склад, счёт, когда и кем создана) ?>
+    <div class="vh-pe-top">
+        <div class="vh-pe-meta"><span class="vh-pe-lbl">Счёт</span><?= $txt('txtShcID', (string)($calc['txtShcID'] ?? ''), ['ro' => true]) ?></div>
+        <div class="vh-pe-meta"><span class="vh-pe-lbl">SkladID</span><?= $txt('SkladIDAdd', (string)($calc['SkladIDAdd'] ?? ''), ['ro' => true]) ?></div>
+        <div class="vh-pe-meta"><span class="vh-pe-lbl">Создана</span><?= $txt('txtDT', $stock('txtDT', 'General Date'), ['ro' => true]) ?></div>
+        <div class="vh-pe-meta"><span class="vh-pe-lbl">Пользователь</span><?= $txt('txtUserCur', (string)($calc['txtUserCur'] ?? ''), ['ro' => true]) ?></div>
+    </div>
+
+    <div class="vh-dlg-body">
+        <div class="vh-pe-cols">
+            <?php // ---------- Поставка ---------- ?>
+            <div class="vh-pe-col">
+                <div class="vh-pe-t">Поставка</div>
+               
+                    <?= $line('Кол.поставщика', $txt('txtKolich', $calc['txtKolich'], ['r' => true])) ?>
+                    <?= $line('кратность', $txt('UpKoef', (string)$calc['UpKoef'], ['r' => true])) ?>
+
+                <?= $chk('IncNDS', 'Включает НДС', !empty($calc['IncNDS'])) ?>
+                <?= $line('Ед. изм. пост.', $sel('PostOKEI', $calc['PostOKEI'], $map($d['okeiList']))) ?>
+                <?= $line('Количество', $txt('kol2', (string)$calc['kol2'], ['r' => true]), ['hide' => true, 'style' => $style('kol2')]) ?>
+                <?= $line('Ед. изм. пост.', $sel('PostOKEI2', $calc['PostOKEI2'], $map($d['okei2List'])), ['hide' => true, 'style' => $style('PostOKEI2')]) ?>
+                <?= $line('Кол. Torex', $txt('ManualKol', (string)$calc['ManualKol'], ['r' => true]), ['hide' => true, 'style' => $style('ManualKol')]) ?>
+                <?= $chk('ManualFlg', 'Ручной ввод количества Torex', !empty($calc['ManualFlg'])) ?>
+                <?= $line('Точное название', $txt('ManualNme', (string)$calc['ManualNme']), ['hide' => true, 'style' => $style('ManualNme')]) ?>
+                <?= $line('Информация', $txt('txtInfo', (string)$calc['txtInfo'])) ?>
+                <?= $line('Дата поставки', $txt('DtaPost', (string)$calc['DtaPost'], ['type' => 'date'])) ?>
+                <?= $line('1 дата поставки', $txt('FirstSrokPost', (string)$calc['FirstSrokPost'], ['type' => 'date']), ['hide' => true, 'style' => $style('FirstSrokPost')]) ?>
+                <?= $line('Каталог', $txt('NmeCat', (string)$calc['NmeCat'], ['title' => 'Двойной щелчок — выбрать каталог, Delete — очистить'])) ?>
+            </div>
+
+            <?php // ---------- Цены и суммы ---------- ?>
+            <div class="vh-pe-col">
+                <div class="vh-pe-t">Цена и суммы</div>
+                <?= $line('Опт,$', $txt('txtPriceOpt', $calc['txtPriceOpt'], ['r' => true]), ['hide' => true, 'style' => $style('txtPriceOpt')]) ?>
+                <?= $line(Html::encode($st['labels']['Надпись89'] ?? 'Цена'), $txt('txtPriceRub', $calc['txtPriceRub'], ['r' => true]), ['hide' => true, 'lid' => 'Надпись89']) ?>
+                <?= $line('Сумма НДС', $txt('SumNDS', $calc['SumNDS'], ['r' => true]), ['hide' => true, 'style' => $style('SumNDS')]) ?>
+                <?= $line(Html::encode($st['labels']['Надпись109'] ?? 'Всего'), $txt('Vsego', $calc['Vsego'], ['r' => true]), ['lid' => 'Надпись109']) ?>
+                <?= $line('Сумма без НДС', $txt('SumWNDS', $calc['SumWNDS'], ['r' => true]), ['hide' => true, 'style' => $style('SumWNDS')]) ?>
+                <?= $line('Цена с НДС', $txt('PrcNDS', $calc['PrcNDS'], ['r' => true]), ['hide' => true, 'style' => $style('PrcNDS')]) ?>
+                <?= $line('Курс,$', $txt('txtKurs', $calc['txtKurs'], ['r' => true])) ?>
+                <?= $line('НДС,%', $sel('txtNDS', $calc['txtNDS'], $ndsMap)) ?>
+                <div class="vh-pe-row">
+                    <span class="vh-pe-lbl" id="Надпись87">Деньги в рублях</span>
+                    <button type="button" class="vh-dlg-btn" id="Кнопка86" title="Деньги в рублях / опт в $">⇄</button>
+                </div>
+                <?= $chk('WOQuest', 'Без вопросов', !empty($calc['WOQuest']), ['hide' => true, 'lid' => 'Надпись121', 'style' => $style('WOQuest')]) ?>
+            </div>
+
+            <?php // ---------- Склад: только показ ---------- ?>
+            <div class="vh-pe-col">
+                <div class="vh-pe-t">На складе</div>
+                <?= $line('На складе', $txt('Количество', $stock('Количество'), ['ro' => true])) ?>
+                <?= $line('Резерв', $txt('txtReserv', $stock('txtReserv'), ['ro' => true, 'r' => true])) ?>
+                <?= $line('Заказано', $txt('Поле70', $stock('Поле70'), ['ro' => true])) ?>
+                <?= $line('Примечание', $txt('Поле72', $stock('Поле72'), ['ro' => true])) ?>
+                <?= $line('Мин. кол-во', $txt('Поле74', $stock('Поле74'), ['ro' => true])) ?>
+                <?= $line('Цена опт.', $txt('ЦенаОптовая', $stock('ЦенаОптовая', 'Fixed', 4), ['ro' => true])) ?>
+                <?= $line('Цена розн.', $txt('Поле78', $stock('Поле78', 'Fixed', 4), ['ro' => true])) ?>
+                <?= $line('Стеллаж', $txt('Поле90', $stock('Поле90'), ['ro' => true])) ?>
+                <?= $line('Ячейка', $txt('Поле92', $stock('Поле92'), ['ro' => true])) ?>
+                <?= $chk('SchWithNDS', 'Учитывать НДС', !empty($calc['SchWithNDS']), ['off' => true]) ?>
+                <?= $chk('PrcWithNDS', 'Сумма включает НДС', !empty($calc['PrcWithNDS']), ['off' => true]) ?>
+            </div>
+        </div>
+
+        <?php // Предупреждения сервера (TestPrice / TestKol) ?>
+        <input class="vh-dlg-inp vh-pe-warn" type="text" id="Warn" readonly
+            placeholder="Предупреждения о цене и количестве" title="Предупреждения о цене и количестве">
+    </div>
+
+    <div class="vh-dlg-foot">
+        <span class="vh-dlg-hint">Суммы пересчитывает сервер. ✓ записывает позицию в счёт.</span>
+        <span class="vh-dlg-btns">
+            <button type="button" class="vh-dlg-btn" id="butSave" title="Сохранить">✓ Сохранить</button>
+            <button type="button" class="vh-dlg-btn" id="butExit" title="Закрыть без сохранения">✕</button>
+        </span>
+    </div>
+
+    <?php // Служебные поля — как в форме Access: их читают скрипты окна ?>
+    <input type="checkbox" id="WithNDS" hidden>
+    <input type="checkbox" id="MnlSm" hidden>
+    <input type="hidden" id="WasChg" value="0">
+    <input type="hidden" id="OldNDS" value="<?= Html::encode(P::n((float)$v['oldNds'])) ?>">
+    <input type="hidden" id="NSh" value="<?= Html::encode((string)$v['nsh']) ?>">
+    <input type="hidden" id="NDSVl" value="">
 </div>
 <?php
 $cfg = Json::encode([

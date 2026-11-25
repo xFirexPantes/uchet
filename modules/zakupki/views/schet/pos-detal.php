@@ -1,36 +1,32 @@
 <?php
 /**
- * «Позиция счёта для деталей» (frmScetaDetalAdd) — диалог поверх карточки счёта на детали.
- * Раскладка: layout/frmScetaDetalAdd.php. Открывается в iframe (web/js/access-dialog.js).
+ * «Позиция счёта для деталей» (frmScetaDetalAdd) — окно поверх карточки счёта на детали.
+ *
+ * Обычная разметка: подписи и поля в сетке, координаты Access не используются.
+ * Открывается в iframe (web/js/access-dialog.js). Поля сохраняются сразу после изменения
+ * (AfterUpdate во временную запись), ✓ записывает позицию в счёт и закрывает окно.
  *
  * @var yii\web\View $this
  * @var int $id     счёт (отрицательный)
  * @var int $idPos  позиция (0 — новая)
  * @var array $row  временная запись из xp_ProdPlanUpdPosSch
  */
+use app\components\AccessFormat as F;
+use yii\helpers\Html;
 use yii\helpers\Json;
 use yii\helpers\Url;
 use yii\web\View;
 
 $this->title = 'Позиция счёта для деталей';
-$layout = require __DIR__ . '/layout/frmScetaDetalAdd.php';
 // Form_Open: подпись цены зависит от «Цена с НДС» счёта
-foreach ($layout as &$c) {
-    if ($c['n'] === 'Prc_Надпись') $c['c'] = (int)($row['PrcWNDS'] ?? 0) === 0 ? 'Цена без НДС' : 'Цена';
-    if ($c['n'] === 'Nme') $c['tip'] = 'Двойной щелчок — выбрать из списка';
-}
-unset($c);
-$w = 0; $h = 0;
-foreach ($layout as $c) {
-    if (empty($c['hidden'])) { $w = max($w, $c['L'] + $c['W']); $h = max($h, $c['T'] + $c['H']); }
-}
-$edit = array_fill_keys(['FullNme'], 'text') + array_fill_keys(['Kol', 'Prc', 'NDS', 'Sm', 'SmNDS', 'Vsego'], 'num');
-$slots = [
-    'AccptRec' => '<button type="button" class="a-btn" id="AccptRec" title="Сохранить позицию">✓</button>',
-    'ClsFrm'   => '<button type="button" class="a-btn" id="ClsFrm" title="Закрыть без сохранения">✕</button>',
-];
+$prcLabel = (int)($row['PrcWNDS'] ?? 0) === 0 ? 'Цена без НДС' : 'Цена';
+
+$val = static fn(string $f, ?string $fmt = null, ?int $dp = null): string => F::value($row[$f] ?? null, $fmt, $dp);
+$num = static fn(string $f): string => Html::encode($val($f, 'General Number', 2));
+
 $this->registerCssFile('@web/css/access-form.css');
-$this->registerCssFile('@web/css/dlg-modern.css');          // корпоративные цвета, когда окно открыто поверх карточки счёта
+$this->registerCssFile('@web/css/dlg-modern.css');          // корпоративные цвета окна
+$this->registerCss('body { background:#fff !important; }');  // макет dialog.php задаёт бежевый фон inline
 $this->registerJsFile('@web/js/access-dialog.js');
 // dlg-modern ставится на <html> только если родитель — современный экран или карточка счёта
 $this->registerJs(<<<'JS'
@@ -41,11 +37,66 @@ try {
 } catch (e) { /* другой сайт или нет доступа — обычный вид Access */ }
 JS, View::POS_HEAD);
 ?>
-<div class="access-form" id="frmScetaDetalAdd" style="width:<?= $w + 4 ?>px;height:<?= $h + 4 ?>px">
-<?= $this->render('@app/views/access/_form', [
-    'layout' => $layout, 'rec' => $row, 'slots' => $slots, 'edit' => $edit,
-    'note' => 'ещё не перенесено',
-]) ?>
+<div class="vh-dlg" id="frmScetaDetalAdd">
+    <div class="vh-dlg-body">
+        <div class="vh-dlg-name">
+            <div class="vh-dlg-cell">
+                <label class="vh-dlg-lbl" for="Nme">Номенклатура</label>
+                <input class="vh-dlg-inp" type="text" id="Nme" readonly value="<?= Html::encode((string)($row['Nme'] ?? '')) ?>"
+                    title="Двойной щелчок — выбрать из списка" style="cursor:pointer">
+            </div>
+            <div class="vh-dlg-cell">
+                <label class="vh-dlg-lbl" for="FullNme">Точное наименование</label>
+                <input class="vh-dlg-inp ed" type="text" id="FullNme" data-field="FullNme" data-kind="text"
+                    value="<?= Html::encode((string)($row['FullNme'] ?? '')) ?>">
+            </div>
+        </div>
+
+        <div class="vh-dlg-nums">
+            <div class="vh-dlg-cell">
+                <label class="vh-dlg-lbl" for="Kol">Количество</label>
+                <input class="vh-dlg-inp r ed" type="text" id="Kol" data-field="Kol" data-kind="num" value="<?= $num('Kol') ?>">
+            </div>
+            <div class="vh-dlg-cell">
+                <label class="vh-dlg-lbl" id="Prc_Надпись" for="Prc"><?= Html::encode($prcLabel) ?></label>
+                <input class="vh-dlg-inp r ed" type="text" id="Prc" data-field="Prc" data-kind="num" value="<?= $num('Prc') ?>">
+            </div>
+            <div class="vh-dlg-cell">
+                <label class="vh-dlg-lbl" for="NDS">Ставка НДС</label>
+                <input class="vh-dlg-inp r ed" type="text" id="NDS" data-field="NDS" data-kind="num" value="<?= $num('NDS') ?>">
+            </div>
+            <div class="vh-dlg-cell">
+                <label class="vh-dlg-lbl" for="Sm">Сумма</label>
+                <input class="vh-dlg-inp r ed" type="text" id="Sm" data-field="Sm" data-kind="num" value="<?= $num('Sm') ?>">
+            </div>
+            <div class="vh-dlg-cell">
+                <label class="vh-dlg-lbl" for="SmNDS">Сумма НДС</label>
+                <input class="vh-dlg-inp r ed" type="text" id="SmNDS" data-field="SmNDS" data-kind="num" value="<?= $num('SmNDS') ?>">
+            </div>
+            <div class="vh-dlg-cell">
+                <label class="vh-dlg-lbl" for="Vsego">Всего</label>
+                <input class="vh-dlg-inp r ed" type="text" id="Vsego" data-field="Vsego" data-kind="num" value="<?= $num('Vsego') ?>">
+            </div>
+        </div>
+    </div>
+
+    <div class="vh-dlg-foot">
+        <span class="vh-dlg-hint" id="Hlp">Количество и цена пересчитывают суммы. ✓ записывает позицию в счёт.</span>
+        <span class="vh-dlg-btns">
+            <button type="button" class="vh-dlg-btn" id="AccptRec" title="Сохранить позицию в счёт">✓ Сохранить</button>
+            <button type="button" class="vh-dlg-btn" id="ClsFrm" title="Закрыть без сохранения">✕</button>
+        </span>
+    </div>
+
+    <?php // Служебные поля — как в форме Access: их читают скрипты окна ?>
+    <input type="hidden" id="ScID" value="<?= Html::encode((string)($row['ScID'] ?? '')) ?>">
+    <input type="hidden" id="ID1C" value="<?= Html::encode((string)($row['ID1C'] ?? '')) ?>">
+    <input type="hidden" id="Who" value="<?= Html::encode((string)($row['Who'] ?? '')) ?>">
+    <input type="hidden" id="DT" value="<?= Html::encode((string)($row['DT'] ?? '')) ?>">
+    <input type="hidden" id="IDPos" value="<?= Html::encode((string)($row['IDPos'] ?? $idPos)) ?>">
+    <input type="hidden" id="ID" value="<?= Html::encode((string)($row['ID'] ?? $id)) ?>">
+    <input type="hidden" id="PrcWNDS" value="<?= Html::encode((string)($row['PrcWNDS'] ?? '')) ?>">
+    <input type="hidden" id="SkladID" value="<?= Html::encode((string)($row['SkladID'] ?? '')) ?>">
 </div>
 <?php
 $saveUrl = Json::encode(Url::to(['pos-detal-save', 'id' => $id]));
@@ -94,9 +145,7 @@ $this->registerJs(<<<JS
         });
     });
     // Nme_DblClick: окно fObnov (оно больше этого окна — открывается в главном), выбранный элемент → xp_ProdPlanUpdPosNomenkl, поля заново
-    const nme = document.getElementById('Nme');
-    if (nme) { nme.title = 'Двойной щелчок — выбрать из списка'; nme.style.cursor = 'pointer'; }
-    nme?.addEventListener('dblclick', async () => {
+    document.getElementById('Nme')?.addEventListener('dblclick', async () => {
         let dlg = accessDialog;
         try { if (window.top !== window && window.top.accessDialog) dlg = window.top.accessDialog; } catch (e) {}
         const f = await dlg($fobUrl, 1336, 505);
