@@ -37,3 +37,6 @@ tests/_support/_generated
 
 # пароли и ключи, только на этом сервере
 /config/local.php
+
+# выгрузки форм Access (SaveAsText) — рабочий материал для разбора, не исходники проекта
+/Forms

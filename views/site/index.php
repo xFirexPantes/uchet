@@ -27,6 +27,7 @@ $user = Yii::$app->user;
         <?= Html::a('Входящие счета', ['/zakupki/vh-schet/index']) ?>
     <?php endif ?>
 
-    <?php // Статистика: имя формы Access и маршрут поставим, когда дойдём до неё ?>
-    <span title="Будет во второй очереди">Статистика</span>
+    <?php if ($user->can('form:frmSt')): ?>
+        <?= Html::a('Статистика', ['/zakupki/stat/index']) ?>
+    <?php endif ?>
 </div>

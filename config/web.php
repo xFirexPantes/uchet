@@ -89,6 +89,8 @@ $config = [
     // Перенесённые разделы: адреса /zakupki/... (modules/zakupki)
     'modules' => [
         'zakupki' => ['class' => app\modules\zakupki\Module::class],
+        // Склад: справочные экраны по элементу, которые открывают все отделы (/sklad/elem/view)
+        'sklad'   => ['class' => app\modules\sklad\Module::class],
     ],
     'params' => $params,
 

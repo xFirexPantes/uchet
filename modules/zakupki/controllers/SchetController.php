@@ -47,7 +47,7 @@ class SchetController extends BaseController
         if ($data === null) {
             throw new NotFoundHttpException("Счёт $id не найден");
         }
-        $this->layout = 'card';   // без шапки сайта, как отдельное окно Access
+        $this->layout = '@app/views/layouts/card';   // без шапки сайта, как отдельное окно Access
         // Оба вида карточки — современный HTML (координаты Access больше не используются)
         return $this->render($elem ? 'elem-modern' : 'detal-modern', ['id' => $id, 'd' => $data]);
     }

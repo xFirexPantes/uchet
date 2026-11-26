@@ -13,6 +13,11 @@ $items = [
 ['label' => 'Главная', 'url' => ['/site/index']],
 ['label' => 'Закупки', 'url' => ['/zakupki/vh-schet/index']],
     [
+        'label' => 'Статистика',
+        'url' => ['/zakupki/stat/index'],
+        'visible' => !Yii::$app->user->isGuest && Yii::$app->user->can('form:frmSt'),
+    ],
+    [
         'label' => 'Logout (' . Html::encode(Yii::$app->user->identity?->username ?? '') . ')',
         'url' => ['/site/logout'],
         'linkOptions' => [
