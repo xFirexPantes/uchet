@@ -1,8 +1,10 @@
 <?php
 /**
- * fObnov — полный поиск компонента («Склад»), диалог. DoCmd.MoveSize 20100 × 7950 твипов → окно 1336 × 505 px, координаты = твипы / 15.
- * Слева дерево xTree (Склад → NSh → Элемент → Серия → Наименование → Номинал → Корпус → Изготовитель), справа список xList.
- * Внизу: поиск (FindElem, от 3 символов через секунду; со «*» — по Enter), поиск по маркировке, «Максимум строк» / «Вывести все»,
+ * fObnov — полный поиск компонента («Склад»), диалог. Обычная разметка: сверху поиск, ниже дерево слева и список справа,
+ * под ними фильтры и строка выбора. Координаты Access не используются, раскладка тянется по высоте окна.
+ *
+ * Слева дерево (Склад → NSh → Элемент → Серия → Наименование → Номинал → Корпус → Изготовитель), справа список.
+ * Внизу: поиск (от 3 символов через секунду; со «*» — по Enter), поиск по маркировке, «Максимум строк» / «Вывести все»,
  * ID выбранного элемента, ✓ ButEl, ✕ Кнопка8, группы TypeSel, IsShow, grpCompany, флажки фильтра, «Принадлежность».
  * У счёта на детали ($det) часть элементов скрыта, TypeSel = 5 (как в Form_Open при открытой frmScetaDetalAdd).
  *
@@ -20,93 +22,121 @@ use yii\helpers\Url;
 use yii\web\View;
 
 $this->title = 'Склад';
-$this->registerCssFile('@web/css/access-form.css');
+$cols = FObnovService::COLS;
+// TypeSel: значение, подпись; 7 «Реализуемые заказчиком» скрыт при открытой frmMassInputSch, 4 «Склады поставщиков» не перенесён
+$typeSel = [[1, 'НЕ давальческое сырьё'], [2, 'Давальческое сырьё'], [6, 'Закупаемые у заказчика'], [3, 'Не важно'], [4, 'Склады поставщиков']];
+if ($det) $typeSel = [];
+$filters = [['IsVP5', 'ВП5'], ['NoAnalog', 'Без аналогов'], ['Nelikvid', 'Неликвиды'], ['IsPG', 'ПГ'], ['IsEFind', 'E-find']];
+if ($det) $filters = [['IsEFind', 'E-find']];
+
+$this->registerCssFile('@web/css/access-form.css');    // общий вид таблиц (.a-grid)
 $this->registerCssFile('@web/css/colresize.css');
+$this->registerCssFile('@web/css/dlg-modern.css');     // корпоративные цвета окна
+$this->registerCss('body { margin:0; background:#fff; }');
 $this->registerJsFile('@web/js/colresize.js');
 $this->registerJsFile('@web/js/access-dialog.js');
-$cols = FObnovService::COLS;
-$pos = fn($l, $t, $w, $h) => "left:{$l}px;top:{$t}px;width:{$w}px;height:{$h}px";
-$lbl = fn($l, $t, $w, $txt, $id = '') => '<div class="a-lbl"' . ($id ? " id=\"$id\"" : '') . " style=\"left:{$l}px;top:{$t}px;width:{$w}px\">" . Html::encode($txt) . '</div>';
-// TypeSel: значение, подпись, left/top кнопки; 7 «Реализуемые заказчиком» скрыт при открытой frmMassInputSch, 4 «Склады поставщиков» не перенесён
-$typeSel = [[1, 'НЕ давальческое сырьё', 384], [2, 'Давальческое сырьё', 404], [6, 'Закупаемые у заказчика', 424], [3, 'Не важно', 464], [4, 'Склады поставщиков', 484]];
-if ($det) $typeSel = [];
+// dlg-modern ставится на <html> только если родитель — современный экран или карточка счёта
+$this->registerJs(<<<'JS'
+try {
+    if (window.parent !== window && window.parent.document.querySelector('.vh-modern, .vh-card')) {
+        document.documentElement.classList.add('dlg-modern');
+    }
+} catch (e) { /* другой сайт или нет доступа — обычный вид Access */ }
+JS, View::POS_HEAD);
 ?>
-<style>
-#fObnov input[type=radio], #fObnov input[type=checkbox]{margin:0;position:absolute}
-#xTree{background:#fff;border:1px inset #999;overflow:auto;font:12px Arial,sans-serif;padding:2px 0}
-#xTree ul{list-style:none;margin:0;padding-left:14px}
-#xTree > ul{padding-left:2px}
-#xTree .nd{white-space:nowrap;cursor:default;line-height:17px}
-#xTree .tg{display:inline-block;width:12px;text-align:center;color:#555;cursor:pointer;font-size:9px}
-#xTree .tx{padding:0 2px}
-#xTree .nd.sel > .tx{background:#316ac5;color:#fff}
-#boxList{background:#fff;border:1px inset #999;overflow:auto}
-#xList th{cursor:pointer}
-#xList th .ar{font-size:8px;color:#555}
-#xList td.blue{color:#0000ff}
-#fObnov .a-txt input{font:11px Tahoma,sans-serif}
-#cnt input{background:#808080;color:#fff;text-align:right}
-</style>
-<div class="access-form" id="fObnov" style="width:1336px;height:505px">
-    <div id="xTree" style="<?= $pos(8, 4, 257, 351) ?>"><ul></ul></div>
-    <div id="boxList" style="<?= $pos(268, 4, 1059, 352) ?>">
-        <table id="xList" class="a-grid" data-key="fobnov.list">
-            <colgroup><?php foreach ($cols as $c): ?><col style="width:<?= (int)$c[2] ?>px"><?php endforeach ?></colgroup>
-            <thead><tr><?php foreach ($cols as $i => $c): ?><th data-i="<?= $i ?>" title="<?= Html::encode($c[1]) ?>"><?= Html::encode($c[1]) ?> <span class="ar"></span><span class="rsz"></span></th><?php endforeach ?></tr></thead>
-            <tbody></tbody>
-        </table>
+<div class="vh-fo" id="fObnov">
+    <div class="vh-fo-top">
+        <div class="vh-fo-f vh-fo-f-find">
+            <span class="vh-fo-lbl">Поиск</span>
+            <input class="vh-dlg-inp" type="text" id="FindElem" autocomplete="off"
+                placeholder="3 символа и больше, со «*» — по Enter">
+        </div>
+        <div class="vh-fo-f">
+            <span class="vh-fo-lbl">Поиск по маркировке</span>
+            <input class="vh-dlg-inp" type="text" id="fndMark" autocomplete="off">
+        </div>
+        <div class="vh-fo-f vh-fo-f-num" id="boxMax">
+            <span class="vh-fo-lbl" id="MaxItemsLabel">Максимум строк</span>
+            <input class="vh-dlg-inp vh-fo-num" type="text" id="MaxItems" value="<?= (int)$maxItems ?>">
+        </div>
+        <label class="vh-fo-chk"><input type="checkbox" id="FlgShowAll"><span>Вывести все</span></label>
+        <div class="vh-fo-f vh-fo-f-num">
+            <span class="vh-fo-lbl">Найдено</span>
+            <div id="cnt" class="vh-fo-cnt"><input type="text" readonly></div>
+        </div>
     </div>
 
-    <?= $lbl(366, 359, 35, 'Поиск') ?>
-    <div class="a-txt edit" style="<?= $pos(405, 359, 113, 17) ?>"><input type="text" id="FindElem" autocomplete="off"></div>
-    <?= $lbl(605, 359, 113, 'Поиск по маркировке') ?>
-    <div class="a-txt edit" style="<?= $pos(718, 359, 150, 17) ?>"><input type="text" id="fndMark" autocomplete="off"></div>
-    <div id="MaxItemsLabel" class="a-lbl" style="left:933px;top:356px;width:86px">Максимум строк</div>
-    <div class="a-txt edit" id="boxMax" style="<?= $pos(1020, 356, 48, 17) ?>"><input type="text" id="MaxItems" value="<?= (int)$maxItems ?>"></div>
-    <?= $lbl(1082, 356, 68, 'Вывести все') ?>
-    <input type="checkbox" id="FlgShowAll" style="left:1150px;top:358px">
-    <div class="a-txt" id="cnt" style="<?= $pos(1183, 355, 52, 17) ?>"><input type="text" readonly></div>
+    <div class="vh-fo-main">
+        <div class="vh-fo-tree" id="xTree"><ul></ul></div>
+        <div class="vh-fo-list" id="boxList">
+            <table id="xList" class="a-grid" data-key="fobnov.list">
+                <colgroup><?php foreach ($cols as $c): ?><col style="width:<?= (int)$c[2] ?>px"><?php endforeach ?></colgroup>
+                <thead><tr><?php foreach ($cols as $i => $c): ?><th data-i="<?= $i ?>" title="<?= Html::encode($c[1]) ?>"><?= Html::encode($c[1]) ?> <span class="ar"></span><span class="rsz"></span></th><?php endforeach ?></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
 
-    <?= $lbl(4, 384, 19, 'ID') ?>
-    <div class="a-txt" style="<?= $pos(26, 386, 69, 17) ?>"><input type="text" id="SkladID" readonly></div>
-    <button type="button" class="a-btn" id="ShowPhoto" disabled title="Фото элемента: ещё не перенесено" style="<?= $pos(155, 384, 39, 38) ?>">Фото</button>
-    <button type="button" class="a-btn" id="ButEl" disabled title="Выбрать элемент" style="<?= $pos(250, 384, 38, 38) ?>;font-size:16px">✓</button>
-    <button type="button" class="a-btn" id="Kn8" title="Закрыть" style="<?= $pos(297, 383, 38, 38) ?>;font-size:16px">✕</button>
-    <?php if ($det): ?>
-    <button type="button" class="a-btn" id="MakeSostDet" disabled title="Составляющие детали: ещё не перенесено" style="<?= $pos(340, 384, 38, 38) ?>">Сост</button>
-    <?php else: ?>
-    <button type="button" class="a-btn" id="btnCopyFullNmeIzg" title="Скопировать полное наименование" style="<?= $pos(340, 384, 38, 38) ?>;visibility:hidden;font-size:16px">📋</button>
-    <?php endif ?>
-    <button type="button" class="a-btn" id="btnBuf" title="Скопировать наименование" style="<?= $pos(761, 444, 29, 29) ?>">⧉</button>
+    <div class="vh-fo-opts">
+        <?php if ($typeSel): ?>
+            <div class="vh-fo-grp">
+                <div class="vh-fo-grp-t">Что показывать</div>
+                <?php foreach ($typeSel as [$v, $t]): ?>
+                    <label class="vh-fo-rad<?= $v === 4 ? ' off' : '' ?>"<?= $v === 4 ? ' title="Склады поставщиков: ещё не перенесено"' : '' ?>>
+                        <input type="radio" name="TypeSel" value="<?= $v ?>"<?= $v === 1 ? ' checked' : '' ?><?= $v === 4 ? ' disabled' : '' ?>>
+                        <span><?= Html::encode($t) ?></span>
+                    </label>
+                <?php endforeach ?>
+            </div>
+            <div class="vh-fo-grp">
+                <div class="vh-fo-grp-t">Элементы</div>
+                <label class="vh-fo-rad"><input type="radio" name="IsShow" value="0" checked><span>Показываемые</span></label>
+                <label class="vh-fo-rad"><input type="radio" name="IsShow" value="1"><span>Удалённые / непоказываемые</span></label>
+            </div>
+        <?php endif ?>
 
-    <?php if ($typeSel): ?>
-    <div class="a-frame" style="<?= $pos(790, 380, 181, 120) ?>"></div>
-    <?php foreach ($typeSel as [$v, $t, $top]): ?>
-        <input type="radio" name="TypeSel" value="<?= $v ?>" <?= $v === 1 ? 'checked' : '' ?> <?= $v === 4 ? 'disabled' : '' ?> style="left:794px;top:<?= $top ?>px" title="<?= $v === 4 ? 'Склады поставщиков: ещё не перенесено' : '' ?>">
-        <?= $lbl(809, $top - 2, 159, $t) ?>
-    <?php endforeach ?>
-    <div class="a-frame" style="<?= $pos(1060, 384, 160, 72) ?>"></div>
-    <input type="radio" name="IsShow" value="0" checked style="left:1061px;top:391px"><?= $lbl(1076, 389, 139, 'Показываемые эл-ты') ?>
-    <input type="radio" name="IsShow" value="1" style="left:1061px;top:421px"><?= $lbl(1076, 420, 144, "Удалённые/\nнепоказываемые эл-ты") ?>
-    <?php endif ?>
+        <div class="vh-fo-grp">
+            <div class="vh-fo-grp-t">Фильтр</div>
+            <?php foreach ($filters as [$n, $t]): ?>
+                <label class="vh-fo-chk"><input type="checkbox" class="flt" id="<?= $n ?>"><span><?= Html::encode($t) ?></span></label>
+            <?php endforeach ?>
+        </div>
 
-    <div class="a-frame" style="<?= $pos(1220, 384, 108, 109) ?>"></div>
-    <?php foreach ([['IsVP5', 'ВП5', 390], ['NoAnalog', 'Без аналогов', 410], ['Nelikvid', 'Неликвид', 431], ['IsPG', 'ПГ', 452], ['IsEFind', 'E-find', 472]] as [$n, $t, $top]):
-        if ($det && $n !== 'IsEFind') continue; ?>
-        <input type="checkbox" class="flt" id="<?= $n ?>" style="left:1225px;top:<?= $top ?>px"><?= $lbl(1240, $top - 2, 84, $t) ?>
-    <?php endforeach ?>
+        <div class="vh-fo-grp">
+            <div class="vh-fo-grp-t">Фирма</div>
+            <?php foreach ([[0, 'Пантес'], [1, 'Торэкс'], [2, 'Не важно']] as [$v, $t]): ?>
+                <label class="vh-fo-rad"><input type="radio" name="grpCompany" value="<?= $v ?>"<?= $v === 2 ? ' checked' : '' ?>><span><?= Html::encode($t) ?></span></label>
+            <?php endforeach ?>
+        </div>
 
-    <div class="a-frame" style="<?= $pos(15, 429, 99, 73) ?>"></div>
-    <?php foreach ([[0, 'Пантес', 437], [1, 'Торэкс', 460], [2, 'Не важно', 483]] as [$v, $t, $top]): ?>
-        <input type="radio" name="grpCompany" value="<?= $v ?>" <?= $v === 2 ? 'checked' : '' ?> style="left:19px;top:<?= $top ?>px"><?= $lbl(34, $top - 2, 62, $t) ?>
-    <?php endforeach ?>
+        <?php if (!$det): ?>
+            <div class="vh-fo-f vh-fo-f-prin">
+                <span class="vh-fo-lbl">Принадлежность</span>
+                <select class="vh-dlg-inp" id="lstPrin">
+                    <?php foreach ($prinList as [$k, $t]): ?>
+                        <option value="<?= Html::encode($k) ?>"<?= (int)$k === $prin ? ' selected' : '' ?>><?= Html::encode($t) ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+        <?php endif ?>
+    </div>
 
-    <?php if (!$det): ?>
-    <?= $lbl(971, 384, 87, 'Принадлежность') ?>
-    <div class="a-txt a-select edit" style="<?= $pos(971, 403, 87, 17) ?>"><select id="lstPrin">
-        <?php foreach ($prinList as [$k, $t]): ?><option value="<?= Html::encode($k) ?>" <?= (int)$k === $prin ? 'selected' : '' ?>><?= Html::encode($t) ?></option><?php endforeach ?>
-    </select></div>
-    <?php endif ?>
+    <div class="vh-fo-foot">
+        <span class="vh-fo-lbl">ID</span>
+        <input class="vh-dlg-inp vh-fo-id" type="text" id="SkladID" readonly>
+        <button type="button" class="vh-dlg-btn" id="ShowPhoto" disabled title="Фото элемента: ещё не перенесено">Фото</button>
+        <?php if ($det): ?>
+            <button type="button" class="vh-dlg-btn" id="MakeSostDet" disabled title="Составляющие детали: ещё не перенесено">Сост</button>
+        <?php else: ?>
+            <button type="button" class="vh-dlg-btn" id="btnCopyFullNmeIzg" title="Скопировать полное наименование" style="visibility:hidden">📋</button>
+        <?php endif ?>
+        <button type="button" class="vh-dlg-btn" id="btnBuf" title="Скопировать наименование">⧉</button>
+        <span class="vh-fo-hint">Щелчок по строке выбирает элемент и раскрывает дерево. Двойной щелчок — выбрать сразу.</span>
+        <span class="vh-fo-btns">
+            <button type="button" class="vh-dlg-btn vh-fo-ok" id="ButEl" disabled title="Выбрать элемент">✓ Выбрать</button>
+            <button type="button" class="vh-dlg-btn" id="Kn8" title="Закрыть">✕</button>
+        </span>
+    </div>
 </div>
 <?php
 $actUrl = Json::encode(Url::to(['act', 'id' => $id]));

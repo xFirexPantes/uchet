@@ -23,7 +23,7 @@ class NaklController extends BaseController
 
     /**
      * id — накладная (ShcID), sch — счёт, из которого открыли (< 0 — счёт на детали).
-     * edit = 1 — режим правки (OpenArgs 7, красный фон), new = 1 — только что создана (Rgm 2: внизу позиции счёта).
+     * edit = 1 — режим правки (OpenArgs 7), new = 1 — только что создана (Rgm 2: внизу позиции счёта).
      * @doc    nakl/view
      * @legacy frmMassInput: Form_Load (Rgm 1 и 2, WhoOpen 0 и 2), SetRS4PosShc, SetRS4WhereBy, FillListSchetPos
      */
@@ -31,7 +31,7 @@ class NaklController extends BaseController
     {
         $d = (new NaklService())->view($id, $sch, (bool)$edit, (bool)$new);
         $this->layout = 'dialog';
-        return $this->render('view', ['id' => $id, 'd' => $d]);
+        return $this->render('view-modern', ['id' => $id, 'd' => $d]);
     }
 
     /**

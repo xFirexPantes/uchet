@@ -37,7 +37,7 @@ class FobnovController extends BaseController
         }
         $svc = new FObnovService();
         $this->layout = 'dialog';
-        return $this->render('view', [
+        return $this->render('view-modern', [
             'id' => $id, 'det' => $id < 0, 'prin' => $prin,
             'prinList' => $id > 0 ? (new SchetPosElemService())->prinList() : [],
             'maxItems' => $svc->maxItems(),

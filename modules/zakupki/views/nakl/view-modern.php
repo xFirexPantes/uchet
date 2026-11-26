@@ -1,10 +1,10 @@
 <?php
 /**
- * Накладная (frmMassInput). Диалог поверх карточки счёта (web/js/access-dialog.js).
- * Раскладка: layout/frmMassInput.php. Rgm 1 (просмотр): список позиций счёта (lstSch) не виден, высота 9616 твипов.
- * Режим правки (OpenArgs 7: новая накладная или ✎ Кнопка58): фон 12615935, шапка правится, работают 💾, −, «На склад».
- * Rgm 2 (новая накладная к счёту на элементы): высота 12060 твипов, внизу lstSch — позиции счёта (SubFrmMassInputSch). Подформа SubFrmqrytblAll (ленточная форма: заголовки сверху, строка полей) — таблица,
- * столбцы по порядку слева направо, ширины = ширина поля / 15; frmWhereBy — тоже таблица.
+ * Накладная (frmMassInput) — современный вид, диалог поверх карточки счёта (web/js/access-dialog.js).
+ *
+ * Обычная разметка: шапка (счёт / накладная / служебное), кнопки, таблица позиций, внизу «Где купил» и суммы;
+ * у новой накладной к счёту на элементы — ещё позиции счёта (lstSch). Координаты Access не используются,
+ * раскладка тянется по высоте окна. Таблицы — общий views/access/_grid.php (ширины столбцов запоминаются).
  *
  * @var yii\web\View $this
  * @var int   $id  накладная
@@ -17,13 +17,12 @@ use yii\helpers\Json;
 use yii\helpers\Url;
 use yii\web\View;
 
-$rec = $d['rec'];
-// Что можно менять, подписи «акт/накладная», фон, высота: правила экрана (services/ScreenRules::nakl)
+$rec  = $d['rec'];
+// Что можно менять, подписи «акт/накладная», изменяемые столбцы: правила экрана (services/ScreenRules::nakl)
 $st   = ScreenRules::nakl($d);
 $edit = $st['flags']['edit'];
 $lst  = $st['flags']['lstSch'];
 $this->title = $st['flags']['akt'] ? 'Акт' : 'Накладная';
-$layout = require __DIR__ . '/layout/frmMassInput.php';
 
 // SubFrmqrytblAll: [поле, заголовок, ширина, опции]
 $posCols = [
@@ -37,51 +36,159 @@ $posCols = [
     ['ProductDate', 'Дата произв.', 76, ['fmt' => 'dd.mm.yyyy']], ['WarrantySrok', 'Срок годн.', 57, ['al' => 'r', 'fmt' => 'Fixed', 'dp' => 0]],
     ['WarrantyDate', 'Годен до', 79, ['fmt' => 'dd.mm.yyyy']], ['Who', 'Кто', 66, []], ['DTLog', 'Когда', 69, ['fmt' => 'General Date']],
 ];
-// IsChangedNakl(False): в режиме правки подписи изменяемых столбцов цветом 12615935
+// IsChangedNakl(False): в режиме правки заголовки изменяемых столбцов выделены
 foreach ($posCols as &$pc) if (in_array($pc[0], $st['editCols'], true)) $pc[3]['cls'] = 'ed-col';
 unset($pc);
 $whereCols = [
     ['ЦенаОптовая', 'Цена, опт', 87, ['al' => 'r', 'dp' => 4]], ['Количество', 'Кол-во', 87, ['al' => 'r']],
     ['Организация', 'Продавец', 124, []], ['Дата', 'Дата', 88, ['fmt' => 'Short Date']],
 ];
+
+// Подписи шапки: у деталей с IsAkt = 1 — «акт» вместо «накладной»
+$lblNakl = rtrim($st['labels']['Надпись33'] ?? '№ накладной:', ':');
+$lblDta  = rtrim($st['labels']['Надпись34'] ?? 'Накладная от:', ':');
+
+$iso = static fn($v): string => is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}/', $v) ? substr($v, 0, 10) : '';
+$dst = ['0' => 'Сокол', '1' => 'ОЗЗ', '255' => 'Не указан'];
+$dstVal = $rec['Dst'] ?? '';
+$dstKey = is_numeric($dstVal) ? (string)(int)$dstVal : (string)$dstVal;
+
+/** Поле шапки: $o[ed] — можно менять (только в режиме правки), $o[field] — поле записи для сохранения. */
+$inp = static function (string $id, string $val, array $o = []) use ($edit): string {
+    $a = ' class="vh-dlg-inp' . (!empty($o['ed']) && $edit ? ' ed' : '') . '" id="' . $id . '" value="' . Html::encode($val) . '"';
+    if (!empty($o['ed']) && $edit) $a .= ' data-field="' . Html::encode($o['field'] ?? $id) . '" data-kind="text"';
+    else $a .= ' readonly';
+    if (!empty($o['type'])) $a .= ' type="' . $o['type'] . '"';
+    return '<input' . $a . '>';
+};
 $sumRows = '';
 foreach ($d['sumSch'] as $r) {
     $sumRows .= '<tr><td>' . Html::encode(F::value($r[0] ?? null)) . '</td><td style="text-align:right">' . Html::encode(F::value($r[1] ?? null)) . '</td></tr>';
 }
-$slots = [
-    'SubFrmqrytblAll1' => $this->render('@app/views/access/_grid', ['tid' => 'npos', 'key' => 'nakl.pos', 'cols' => $posCols,
-                            'rows' => $d['pos'], 'idField' => 'AllID', 'dataFields' => ['SkladID', 'InSklad', 'IDSchEl', 'ProductDate', 'WarrantyDate']]),
-    'frmWhereBy1'      => $this->render('@app/views/access/_grid', ['tid' => 'where', 'key' => 'nakl.where', 'cols' => $whereCols, 'rows' => $d['whereBy']]),
-    'SumSch'           => '<div style="width:100%;height:100%;overflow:auto;background:#fff;border:1px solid #7f9db9">'
-                        . '<table class="a-grid" id="sumSch"><colgroup><col style="width:132px"><col style="width:57px"></colgroup><tbody>' . $sumRows . '</tbody></table></div>',
-    'butExit'          => '<button type="button" class="a-btn" id="butExit" title="Выход">✕</button>',
+
+$tools = [
+    'butDob'    => ['＋', 'Добавить позицию в накладную'],
+    'DelRec'    => ['−', 'Удалить позицию из накладной'],
+    'Кнопка58'  => ['✎', 'Корректировка позиции в накладной'],
+    'butSaveAs' => ['💾', 'Сохранить накладную'],
+    'LoadGTD'   => ['ГТД', 'Загрузка ГТД'],
+    'ToSklad'   => ['На склад', 'Перенести элементы на склад'],
 ];
-if ($lst) {   // lstSch: позиции счёта, как в карточке (тот же файл столбцов)
-    ['cols' => $schCols, 'key' => $schKey] = (function () use ($d) { $rec = $d['cardRec']; $all = false; return require __DIR__ . '/../schet/_pos-cols.php'; })();
-    $slots['lstSch'] = '<div style="width:100%;height:100%;overflow:auto;background:#fff">'
-        . $this->render('@app/views/access/_grid', ['tid' => 'lsch', 'key' => 'nakl.' . $schKey, 'cols' => $schCols, 'rows' => $d['lstSch']]) . '</div>';
-}
-$icons = [
-    'butDob' => ['＋', 'Добавить позицию в накладную'], 'DelRec' => ['−', 'Удалить позицию из накладной'],
-    'butSaveAs' => ['💾', 'Сохранить накладную'], 'Кнопка58' => ['✎', 'Корректировка позиции в накладной'],
-    'ToSklad' => ['На склад', 'Перенести элементы на склад'], 'LoadGTD' => ['ГТД', 'Загрузка ГТД'],
-];
-$dst = ['0' => 'Сокол', '1' => 'ОЗЗ', '255' => 'Не указан'];
-$this->registerCssFile('@web/css/access-form.css');
+$why = $edit ? 'недоступно в этом режиме' : 'сначала включите режим правки (✎)';
+
+$this->registerCssFile('@web/css/access-form.css');    // общий вид таблиц (.a-grid)
 $this->registerCssFile('@web/css/colresize.css');
+$this->registerCssFile('@web/css/dlg-modern.css');     // корпоративные цвета окна
+$this->registerCss('body { margin:0; background:#fff; }');
 $this->registerJsFile('@web/js/colresize.js');
 $this->registerJsFile('@web/js/access-dialog.js');
+// dlg-modern ставится на <html> только если родитель — современный экран или карточка счёта
+$this->registerJs(<<<'JS'
+try {
+    if (window.parent !== window && window.parent.document.querySelector('.vh-modern, .vh-card')) {
+        document.documentElement.classList.add('dlg-modern');
+    }
+} catch (e) { /* другой сайт или нет доступа — обычный вид Access */ }
+JS, View::POS_HEAD);
 ?>
-<style>#npos th.ed-col{color:<?= F::color(12615935) ?>}
-#npos input.cell-ed{width:100%;height:100%;box-sizing:border-box;border:0;background:transparent;color:inherit;font:inherit;padding:0 2px}
-#npos input.cell-ed:focus{background:#fff;color:#000;outline:1px solid #316ac5}
-#npos input.cell-ed.saving{background:#ffffe0;color:#000}</style>
-<div class="access-form" id="frmMassInput" style="width:1243px;height:<?= $st['height'] ?>px;background:<?= F::color($st['bg']) ?>">
-<?= $this->render('@app/views/access/_form', [
-    'layout' => $layout, 'rec' => $rec, 'calc' => [], 'combos' => ['Dst' => $dst],
-    'state' => $st, 'slots' => $slots, 'icons' => $icons,
-    'note' => 'ещё не перенесено',
-]) ?>
+<div class="vh-nk" id="frmMassInput">
+    <div class="vh-nk-head">
+        <div class="vh-nk-block">
+            <div class="vh-nk-t">Счёт</div>
+            <div class="vh-nk-rows">
+                <span class="vh-nk-lbl">Продавец</span><?= $inp('Организация', (string)($rec['Org'] ?? '')) ?>
+                <span class="vh-nk-lbl">Покупатель</span><?= $inp('TP', (string)($rec['TP'] ?? '')) ?>
+                <span class="vh-nk-lbl">№ счёта</span><?= $inp('НомерСчета', (string)($rec['NumSch'] ?? '')) ?>
+                <span class="vh-nk-lbl">Счёт от</span><?= $inp('ДатаСчета', F::value($rec['DtaSch'] ?? null, 'Short Date')) ?>
+            </div>
+        </div>
+
+        <div class="vh-nk-block">
+            <div class="vh-nk-t"><?= $st['flags']['akt'] ? 'Акт' : 'Накладная' ?></div>
+            <div class="vh-nk-rows">
+                <span class="vh-nk-lbl"><?= Html::encode($lblNakl) ?></span>
+                <?= $inp('НомерНакладной', (string)($rec['НомерНакладной'] ?? ''), ['ed' => true, 'field' => 'НомерНакладной']) ?>
+                <span class="vh-nk-lbl"><?= Html::encode($lblDta) ?></span>
+                <?php if ($edit): ?>
+                    <input class="vh-dlg-inp ed" type="date" id="ДатаНакладной" data-field="ДатаНакладной" data-kind="date"
+                        value="<?= Html::encode($iso($rec['ДатаНакладной'] ?? null)) ?>">
+                <?php else: ?>
+                    <?= $inp('ДатаНакладной', F::value($rec['ДатаНакладной'] ?? null, 'Short Date')) ?>
+                <?php endif ?>
+                <span class="vh-nk-lbl">Склад</span>
+                <?php if ($edit): ?>
+                    <select class="vh-dlg-inp ed" id="Dst" data-field="Dst" data-kind="select">
+                        <?php if (!isset($dst[$dstKey])): ?><option value=""></option><?php endif ?>
+                        <?php foreach ($dst as $k => $t): ?>
+                            <option value="<?= $k ?>"<?= (string)$k === $dstKey ? ' selected' : '' ?>><?= Html::encode($t) ?></option>
+                        <?php endforeach ?>
+                    </select>
+                <?php else: ?>
+                    <?= $inp('Dst', $dst[$dstKey] ?? $dstKey) ?>
+                <?php endif ?>
+            </div>
+        </div>
+
+        <div class="vh-nk-stamp">
+            <span><span class="vh-nk-lbl">Дата</span> <?= Html::encode(F::value($rec['Дата'] ?? null, 'Short Date')) ?></span>
+            <span><span class="vh-nk-lbl">Время</span> <?= Html::encode(F::value($rec['Время'] ?? null, 'Short Time')) ?></span>
+            <span><span class="vh-nk-lbl">User</span> <?= Html::encode((string)($rec['UserCur'] ?? '')) ?></span>
+            <span><span class="vh-nk-lbl">ShcID</span> <?= Html::encode((string)($rec['ShcID'] ?? '')) ?></span>
+        </div>
+    </div>
+
+    <div class="vh-nk-tools">
+        <?php foreach ($tools as $name => [$label, $tip]):
+            if (isset($st['edit'][$name])): ?>
+                <button type="button" class="vh-dlg-btn act" id="<?= $name ?>" data-act="<?= $name ?>" title="<?= Html::encode($tip) ?>"><?= Html::encode($label) ?></button>
+            <?php else: ?>
+                <button type="button" class="vh-dlg-btn" id="<?= $name ?>" disabled title="<?= Html::encode("$tip: $why") ?>"><?= Html::encode($label) ?></button>
+            <?php endif;
+        endforeach ?>
+        <?php if ($edit): ?><span class="vh-nk-badge">Режим правки</span><?php endif ?>
+        <?php if ($d['leg01']): ?><span class="vh-nk-badge vh-nk-badge-warn">Комплект плат</span><?php endif ?>
+        <span class="vh-nk-hint">Двойной щелчок по «Дата произв.», «Годен до», «Остаток» — правка</span>
+        <button type="button" class="vh-dlg-btn vh-nk-exit" id="butExit" title="Выход">✕</button>
+    </div>
+
+    <div class="vh-nk-grid">
+        <?= $this->render('@app/views/access/_grid', ['tid' => 'npos', 'key' => 'nakl.pos', 'cols' => $posCols,
+            'rows' => $d['pos'], 'idField' => 'AllID', 'dataFields' => ['SkladID', 'InSklad', 'IDSchEl', 'ProductDate', 'WarrantyDate']]) ?>
+    </div>
+
+    <div class="vh-nk-bottom">
+        <div class="vh-nk-where">
+            <div class="vh-nk-cap">Где купил</div>
+            <div class="vh-nk-grid vh-nk-grid-sm">
+                <?= $this->render('@app/views/access/_grid', ['tid' => 'where', 'key' => 'nakl.where', 'cols' => $whereCols, 'rows' => $d['whereBy']]) ?>
+            </div>
+        </div>
+        <div class="vh-nk-sums">
+            <div class="vh-nk-cap">Суммы</div>
+            <div class="vh-nk-grid vh-nk-grid-sm">
+                <table class="a-grid" id="sumSch">
+                    <colgroup><col style="width:132px"><col style="width:57px"></colgroup>
+                    <tbody><?= $sumRows ?></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <?php if ($lst): // Rgm 2: позиции счёта (SubFrmMassInputSch) — те же столбцы, что в карточке ?>
+        <div class="vh-nk-lsch">
+            <div class="vh-nk-cap">Позиции счёта</div>
+            <div class="vh-nk-grid">
+                <?php ['cols' => $schCols, 'key' => $schKey] = (function () use ($d) { $rec = $d['cardRec']; $all = false; return require __DIR__ . '/../schet/_pos-cols.php'; })(); ?>
+                <?= $this->render('@app/views/access/_grid', ['tid' => 'lsch', 'key' => 'nakl.' . $schKey, 'cols' => $schCols, 'rows' => $d['lstSch']]) ?>
+            </div>
+        </div>
+    <?php endif ?>
+
+    <?php // Служебные поля формы Access: их читают скрипты окна ?>
+    <input type="hidden" id="txtShcID" value="<?= Html::encode((string)($rec['ShcID'] ?? $id)) ?>">
+    <input type="hidden" id="Rgm" value="<?= $lst ? '2' : '1' ?>">
+    <input type="hidden" id="IsAkt" value="<?= (int)($rec['IsAkt'] ?? 0) ?>">
+    <input type="hidden" id="InUE" value="<?= (int)($rec['InUE'] ?? 0) ?>">
 </div>
 <?php
 $whereUrl = Json::encode(Url::to(['where-by']));
@@ -209,7 +316,7 @@ $this->registerJs(<<<JS
     const COLS = $colMeta, EDIT = $editCols;
     function fmt(v, f, dp) {                                  // как AccessFormat::value
         if (v === null || v === undefined || v === '') return '';
-        const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}):(\d{2}))?/);
+        const m = String(v).match(/^(\\d{4})-(\\d{2})-(\\d{2})(?: (\\d{2}):(\\d{2}):(\\d{2}))?/);
         if (m) { const d = m[3] + '.' + m[2] + '.' + m[1]; if (f && f.startsWith('dd')) return d; return m[4] && (m[4] + m[5]) !== '0000' ? d + ' ' + m[4] + ':' + m[5] + ':' + m[6] : d; }
         if (isNaN(v)) return String(v);
         const n = +v;
@@ -296,7 +403,7 @@ $this->registerJs(<<<JS
         if (f === 'Ostatok') {                                          // GetFromBox(«Введите остаток», , 1)
             const s = await inputBox('Введите остаток', '');
             if (s === null) return;
-            if (!/^\s*-?\d+([.,]\d*)?\s*$/.test(s)) { await msgBox('Необходимо ввести числовое значение'); return; }
+            if (!/^\\s*-?\\d+([.,]\\d*)?\\s*$/.test(s)) { await msgBox('Необходимо ввести числовое значение'); return; }
             const res = await post({ act: 'Ostatok', pos: tr.dataset.id, value: s.trim() });
             if (!res.ok) await msgBox(res.msg || 'Не удалось отредактировать запись', { icon: 'warn' });
             done(res);
@@ -321,7 +428,7 @@ $this->registerJs(<<<JS
             for (;;) {
                 ans = await inputBox('Введите срок годности', '', { select: [['d', 'Д'], ['m', 'М'], ['y', 'Г']], selDef: 'm' });
                 if (ans === null) return;
-                if (/^\s*\d+\s*$/.test(ans[0])) break;
+                if (/^\\s*\\d+\\s*$/.test(ans[0])) break;
                 await msgBox('Необходимо указать числовое значение');
             }
             dta = prod.replaceAll('-', '') + ans[1] + ans[0].trim();

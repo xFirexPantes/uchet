@@ -231,6 +231,109 @@ html.dlg-modern body { overflow:auto; }
 .vh-pe-warn { color:#8a6d1f; background:#fffdf5; border-color:#efe0b8; }
 .vh-pe-warn:read-only { background:#fffdf5; }
 
+/* ---------- Накладная (nakl/view-modern.php) ----------
+   Шапка из двух блоков и служебных полей, кнопки, таблица позиций, внизу «Где купил» и суммы.
+   Раскладка тянется по высоте окна (окно открывается в iframe фиксированного размера). */
+.vh-nk { display:flex; flex-direction:column; height:100vh; box-sizing:border-box; gap:.4rem;
+    padding:.45rem .55rem; background:#fff; font:12px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; color:#20414d; }
+.vh-nk-head { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:.4rem .6rem; align-items:start; flex:0 0 auto; }
+.vh-nk-block { min-width:0; border:1px solid #dceef5; border-radius:.4rem; padding:0 .45rem .35rem; background:#fff; }
+.vh-nk-t { margin:0 -.45rem .2rem; padding:.2rem .45rem; background:#eaf7fc; border-bottom:1px solid #dceef5;
+    border-radius:.4rem .4rem 0 0; font:600 .72rem/1.2 system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; color:#1b5c72; }
+.vh-nk-rows { display:grid; grid-template-columns:auto minmax(0,1fr); gap:.2rem .5rem; align-items:center; }
+.vh-nk-lbl { font-size:.72rem; color:#5b8598; white-space:nowrap; }
+.vh-nk-stamp { display:flex; flex-direction:column; gap:.1rem; font-size:.72rem; color:#20414d; white-space:nowrap; }
+.vh-nk-tools { display:flex; flex-wrap:wrap; gap:.25rem; align-items:center; flex:0 0 auto; }
+.vh-nk-tools .vh-dlg-btn { min-height:24px; }
+.vh-nk-exit { margin-left:.2rem; }
+.vh-nk-hint { margin-left:auto; font-size:.7rem; color:#5b8598; }
+.vh-nk-badge { display:inline-flex; align-items:center; min-height:20px; padding:0 .45rem; border-radius:1rem;
+    background:#fdeef3; border:1px solid #f5c2d0; color:#a4232b; font:600 .68rem/1 system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; }
+.vh-nk-badge-warn { background:#fff6e5; border-color:#efe0b8; color:#8a6d1f; }
+.vh-nk-grid { flex:1 1 auto; min-height:60px; overflow:auto; border:1px solid #c5e7f2; border-radius:.4rem; background:#fff; }
+.vh-nk-grid-sm { min-height:0; }
+.vh-nk-bottom { display:flex; gap:.5rem; flex:0 0 auto; height:112px; }
+.vh-nk-where { display:flex; flex-direction:column; min-width:0; flex:1 1 auto; }
+.vh-nk-sums { display:flex; flex-direction:column; flex:0 0 auto; width:212px; }
+.vh-nk-cap { font-size:.7rem; color:#5b8598; padding:0 0 .1rem .1rem; }
+.vh-nk-lsch { display:flex; flex-direction:column; flex:0 0 auto; height:152px; }
+/* Таблицы в окне — в корпоративных цветах */
+.vh-nk .a-grid { font:12px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; }
+.vh-nk .a-grid th { background:#eaf7fc; color:#1b5c72; border-color:#c5e7f2; font-weight:600; }
+.vh-nk .a-grid td { border-color:#e6f2f7; color:#20414d; }
+.vh-nk .a-grid tr.sel td { background:#40B3D8 !important; color:#fff !important; }
+.vh-nk .a-grid tr:hover:not(.sel) td { background:#f6fbfd; }
+.vh-nk .a-grid th.ed-col { color:#c2185b; }
+.vh-nk input.cell-ed { width:100%; height:100%; box-sizing:border-box; border:0; background:transparent;
+    color:inherit; font:inherit; padding:0 2px; }
+.vh-nk input.cell-ed:focus { background:#fff; color:#000; outline:1px solid #40B3D8; }
+.vh-nk input.cell-ed.saving { background:#fffbe0; color:#000; }
+@media (max-width:1100px) {
+    .vh-nk { height:auto; min-height:100vh; }
+    .vh-nk-head { grid-template-columns:minmax(0,1fr); }
+    .vh-nk-stamp { flex-direction:row; flex-wrap:wrap; gap:.2rem .8rem; }
+    .vh-nk-grid { min-height:180px; }
+    .vh-nk-bottom { height:auto; flex-direction:column; }
+    .vh-nk-sums { width:auto; }
+}
+
+/* ---------- fObnov (fobnov/view-modern.php): полный поиск компонента ----------
+   Сверху поиск, ниже дерево и список, под ними фильтры и строка выбора. Окно тянется по высоте iframe. */
+.vh-fo { display:flex; flex-direction:column; height:100vh; box-sizing:border-box; gap:.4rem;
+    padding:.45rem .55rem; background:#fff; font:12px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; color:#20414d; }
+.vh-fo-lbl { font-size:.72rem; color:#5b8598; white-space:nowrap; }
+.vh-fo-top { display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap; flex:0 0 auto; }
+.vh-fo-f { display:flex; flex-direction:column; gap:.12rem; min-width:0; }
+.vh-fo-f-find { flex:1 1 260px; max-width:420px; }
+.vh-fo-f-num { flex:0 0 auto; }
+.vh-fo-num { width:64px; text-align:right; }
+.vh-fo-cnt input { width:56px; text-align:right; background:#eef6fa; color:#1b5c72; border:1px solid #c5e7f2;
+    border-radius:.25rem; height:24px; padding:0 .3rem; box-sizing:border-box;
+    font:12px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; }
+.vh-fo-chk { display:inline-flex; align-items:center; gap:.35rem; font-size:.75rem; color:#20414d; cursor:pointer; white-space:nowrap; }
+.vh-fo-chk input { margin:0; accent-color:#40B3D8; }
+.vh-fo-main { flex:1 1 auto; display:grid; grid-template-columns:250px minmax(0,1fr); gap:.45rem; min-height:120px; }
+.vh-fo-tree { overflow:auto; border:1px solid #c5e7f2; border-radius:.4rem; background:#fff; padding:2px 0; }
+.vh-fo-list { overflow:auto; border:1px solid #c5e7f2; border-radius:.4rem; background:#fff; }
+/* дерево */
+.vh-fo-tree ul { list-style:none; margin:0; padding-left:14px; }
+.vh-fo-tree > ul { padding-left:2px; }
+.vh-fo-tree .nd { white-space:nowrap; cursor:default; line-height:17px; display:flex; align-items:center; }
+.vh-fo-tree .tg { display:inline-block; width:12px; text-align:center; color:#5b8598; cursor:pointer; font-size:9px; flex:0 0 auto; }
+.vh-fo-tree .tx { padding:0 2px; overflow:hidden; text-overflow:ellipsis; }
+.vh-fo-tree .nd:hover > .tx { color:#1b5c72; }
+.vh-fo-tree .nd.sel > .tx { background:#40B3D8; color:#fff; border-radius:.2rem; }
+/* список */
+.vh-fo .a-grid th { background:#eaf7fc; color:#1b5c72; border-color:#c5e7f2; font-weight:600; cursor:pointer; }
+.vh-fo .a-grid td { border-color:#e6f2f7; color:#20414d; }
+.vh-fo .a-grid tr.sel td { background:#40B3D8 !important; color:#fff !important; }
+.vh-fo .a-grid tr:hover:not(.sel) td { background:#f6fbfd; }
+.vh-fo #xList td.blue { color:#0d6efd; }
+.vh-fo #xList th .ar { font-size:8px; color:#5b8598; }
+/* фильтры */
+.vh-fo-opts { display:flex; flex-wrap:wrap; gap:.3rem .5rem; align-items:stretch; flex:0 0 auto; }
+.vh-fo-grp { display:flex; flex-wrap:wrap; align-items:center; gap:.15rem .7rem; padding:.15rem .5rem .25rem;
+    border:1px solid #dceef5; border-radius:.4rem; background:#fff; }
+.vh-fo-grp-t { flex:1 0 100%; font:600 .68rem/1.2 system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; color:#1b5c72; }
+.vh-fo-rad { display:inline-flex; align-items:center; gap:.3rem; font-size:.75rem; color:#20414d; cursor:pointer; white-space:nowrap; margin:0; }
+.vh-fo-rad input { margin:0; accent-color:#40B3D8; }
+.vh-fo-rad.off, .vh-fo-rad input:disabled + span { color:#9db9c4; cursor:default; }
+.vh-fo-f-prin { flex:0 0 auto; min-width:170px; }
+/* строка выбора */
+.vh-fo-foot { display:flex; flex-wrap:wrap; align-items:center; gap:.3rem .45rem; flex:0 0 auto;
+    padding-top:.4rem; border-top:1px solid #c5e7f2; }
+.vh-fo-id { width:80px; text-align:center; }
+.vh-fo-hint { font-size:.7rem; color:#5b8598; margin-left:auto; }
+.vh-fo-btns { display:inline-flex; gap:.3rem; }
+.vh-fo-ok:not(:disabled) { border-color:#40B3D8; color:#1b5c72; }
+@media (max-width:900px) {
+    .vh-fo { height:auto; min-height:100vh; }
+    .vh-fo-main { grid-template-columns:minmax(0,1fr); min-height:0; }
+    .vh-fo-tree { max-height:200px; }
+    .vh-fo-list { min-height:220px; }
+    .vh-fo-hint { margin-left:0; flex:1 0 100%; }
+}
+
 /* ---------- frmGetInterval (interval.js, окно рисуется в родителе) ---------- */
 .dlg-modern.gi-ov { background: rgba(27, 92, 114, .30); }
 .dlg-modern .gi {
