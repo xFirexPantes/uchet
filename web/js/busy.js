@@ -216,14 +216,20 @@
         const root = document.documentElement;
         root.classList.add('vh-boot');
         let done = false;
+
+        // Окно снимаем только после того, как содержимое уже нарисовано под ним:
+        // иначе между «показать контент» и «убрать окно» мелькает пустой кадр.
+        const paint = fn => requestAnimationFrame(() => requestAnimationFrame(fn));
+
         const reveal = () => {
             if (done) return;
             done = true;
             root.classList.remove('vh-boot');
-            hide();
+            paint(() => hide());
         };
+
         document.addEventListener('DOMContentLoaded', () => window.Busy.show());
-        window.addEventListener('load', () => requestAnimationFrame(() => requestAnimationFrame(reveal)));
+        window.addEventListener('load', () => paint(reveal));
         setTimeout(reveal, 4000);
     }
 })();

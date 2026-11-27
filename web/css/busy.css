@@ -7,6 +7,13 @@ html.vh-boot #main {
     visibility: hidden;
 }
 
+/* Пока экран скрыт, фон страницы — не белый: если браузер успеет показать кадр
+   до окна занятости, это будет мягкий фон макета, а не вспышка белого. */
+html.vh-boot,
+html.vh-boot body {
+    background: #f4fafc;
+}
+
 html.vh-boot {
     cursor: progress;
 }
