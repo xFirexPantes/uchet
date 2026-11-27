@@ -300,8 +300,13 @@ class StatService
         // PrepareMinKolFrom1C вне формы frmSt, поэтому при незаполненной таблице список пуст.
         // Так же ведёт себя Access: сама форма процедуру подготовки не вызывает.
 
-        // FlgPaintDolg = False → к строке поиска добавляется «&» (так в Access по умолчанию).
-        $fnd = StatContext::needPaintDolg() ? (string)$f->fnd : '&' . $f->fnd;
+        // В Access SetRS4Statistic получает уже готовую маску поиска: "%" + st + "%"
+        // (frmMinimum: Call SetRS4Statistic(..., "%" + st + "%", ...)). Префикс «&» —
+        // признак FlgPaintDolg = False: процедура снимает его и включает раскраску долга.
+        // Пустая маска недопустима: в процедурах «... LIKE @S», поэтому при пустом поиске
+        // обязательно остаётся «%», иначе список пуст (в Access при этом уходит '&%').
+        $s   = '%' . (string)$f->fnd . '%';
+        $fnd = StatContext::needPaintDolg() ? $s : '&' . $s;
         // Второй параметр SetRS4Statistic — Forms!frmst!f: мультивыбор фирм («%» или ID через запятую).
         // Поставщик filt1 сюда НЕ передаётся: в Access он работает только с временной таблицей счетов.
         $firmSel = (string)$f->f;
