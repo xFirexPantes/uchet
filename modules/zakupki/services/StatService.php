@@ -348,7 +348,41 @@ class StatService
             ? 'Выберите фильтры, чтобы получить список (в Access форма тоже открывается пустой).'
             : null;
 
+        $rows = $this->addLowR($rows, $what, $f);
+
         return ['rows' => $rows, 'note' => $note, 'error' => null];
+    }
+
+    /**
+     * Колонка LowR («Дешевле») — в Access это вычисляемое поле подформы, в наборе его нет.
+     *
+     * fnRepaintFormStat:
+     *   виды 1,2,3,4,5,9,a — LowR.ControlSource = "=[txtSv]*[ЦенаОптовая]*[KursUSD]";
+     *   вид 7             — "=[txtSv]*[ЦенаОптовая]" (цена уже в долларах, dl = True);
+     *   вид b             — "MinStartZak" (поле приходит из процедуры, ничего не считаем).
+     *
+     * Значение «Заказать» берём из txtSV, а если процедура назвала его OrderEls
+     * (вид 2, 3) — оттуда. Курс — тот же, что на экране учёта (Forms!frmUchet!KursUSD).
+     *
+     * @param array<int,array<string,mixed>> $rows
+     * @return array<int,array<string,mixed>>
+     */
+    private function addLowR(array $rows, string $what, StatFilter $f): array
+    {
+        if (!$rows || str_starts_with($what, 'b')) return $rows;
+
+        $kurs = str_starts_with($what, '7')
+            ? 1.0
+            : ((float)$f->kurs > 0 ? (float)$f->kurs : StatContext::kursUsd());
+
+        foreach ($rows as &$r) {
+            $kol = $r['txtSV'] ?? $r['OrderEls'] ?? null;
+            if ($kol === null || !isset($r['ЦенаОптовая'])) continue;
+            $r['LowR'] = round((float)$kol * (float)$r['ЦенаОптовая'] * $kurs, 2);
+        }
+        unset($r);
+
+        return $rows;
     }
 
     /**
