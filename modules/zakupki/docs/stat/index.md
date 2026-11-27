@@ -82,10 +82,14 @@ perm: form:frmSt
 - «Счёт запр.» (`RequestSch`) — чекбокс, как `CheckBox` подформы `frmMinimum`. Клик ставит/снимает
   галку: `RequestSch_MouseDown` → `UpdateNotRecFlg(txtID, "ReqSch")`, затем перезапрос строки.
   Стоящая галка красит строку зелёным (`ConditionalFormat14`, `[RequestSch]=True`).
-- Флажок без подписи (`NotRec`, «не рекомендуется к поставке») — тоже чекбокс `CheckBox` подформы.
-  Клик: `NotRec_MouseDown` → `UpdateNotRecFlg(Me!txtID)`; в `UpdateNotRecFlg` параметр `Rgm`
-  по умолчанию равен `"NotRec"`, поэтому вызывается `xp_UpdateNotRecFlgNew(txtID, "NotRec")`.
+- Флажок «Не рек» (`NotRec`, «не рекомендуется к поставке») — тоже чекбокс `CheckBox` подформы;
+  подпись к нему — отдельный `Label` `Надпись51` над контролом. Клик: `NotRec_MouseDown` →
+  `UpdateNotRecFlg(Me!txtID)`; в `UpdateNotRecFlg` параметр `Rgm` по умолчанию равен `"NotRec"`,
+  поэтому вызывается `xp_UpdateNotRecFlgNew(txtID, "NotRec")`.
   Коды ответа те же, что у «Счёт запр.». После успешной смены строка перезапрашивается (`StndOnLne`).
+- `SostProblEl` в списке выводится только в виде b — там он называется «Ком.произв.» и по двойному
+  щелчку открывает комментарий производства. В остальных видах колонки нет (`SHOWN_ONLY_IN`).
+- `VP5` и `NoAnalog` — чекбоксы только для просмотра: в Access у них нет обработчиков.
 - Щелчок по строке делает её текущей (подсветка, как `OnCurrent` в Access).
 - Двойной щелчок по строке открывает карточку элемента (`/sklad/elem/view?id=…`, форма Access `Fobnovlen1`)
   в отдельном окне — как `OpenKartElem` в Access. Список остаётся на месте.

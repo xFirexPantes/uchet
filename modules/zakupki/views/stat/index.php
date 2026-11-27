@@ -953,31 +953,24 @@ $this->registerJs(<<<'JS'
     });
 
     /**
-     * RequestSch_MouseDown / NotRec_MouseDown: галки «Счёт запр.» и «не рекомендуется».
+     * RequestSch_MouseDown / NotRec_MouseDown: галки «Счёт запр.» и «Не рек».
      * Access переключает флаг процедурой UpdateNotRecFlg(txtID, "ReqSch"|"NotRec")
-     * и перезапрашивает строку (StndOnLne).
+     * и перезапрашивает строку (StndOnLne). Запрос идёт через postAct — он добавляет CSRF-токен.
      */
     tbl.addEventListener('change', async e => {
         const chk = e.target.closest('input.vh-chk');
-        if (!chk || !cfg.actUrl) return;
+        if (!chk || !cfg.actUrl || chk.disabled) return;
         const code = chk.dataset.code;
         const act  = chk.dataset.act || 'ReqSch';
         chk.disabled = true;
         try {
-            const r = await fetch(cfg.actUrl, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest',
-                           'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ id: code, act }).toString(),
-            });
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            const d = await r.json();
+            const d = await postAct({ id: code, act });
             if (!d.ok) {
                 chk.checked = !chk.checked;             // вернуть прежнее состояние
                 alert(d.error || 'Не удалось изменить флажок');
                 return;
             }
-            // StndOnLne: перезапрос списка с возвратом к текущей записи — флажок и цвета придут с сервера
+            // StndOnLne: перезапрос списка с возвратом к текущей записи — цвета придут с сервера
             refresh();
         } catch (err) {
             chk.checked = !chk.checked;
@@ -1184,6 +1177,12 @@ $this->registerJs(<<<'JS'
         if (cp) fd.append(cp, document.querySelector('meta[name=csrf-token]')?.content || '');
         try {
             const r = await fetch(cfg.actUrl, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!r.ok) {
+                // 400 — обычно истёк CSRF-токен: страница открыта давно, сессия перезаписана
+                return { ok: false, error: r.status === 400
+                    ? 'Сервер отклонил запрос (400). Обновите страницу (⟳ Обновить) и повторите.'
+                    : 'Ошибка сервера: HTTP ' + r.status };
+            }
             return await r.json();
         } catch (e) {
             return { ok: false, error: 'Не удалось связаться с сервером: ' + e.message };
