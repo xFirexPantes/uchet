@@ -27,10 +27,14 @@ class StatController extends BaseController
     }
 
     /**
-     * Список статистики: вид, поиск, поставщик, город, даты, ФЗ-275, тип сырья.
+     * Список статистики: вид, поиск, фирмы, WhatFirm, менеджер, даты, сырьё, «Заказ», ФЗ-275, состояние.
+     *
+     * Набор видимых фильтров зависит от вида — правила fnRepaintFormStat применяет
+     * StatFilter::applyViewRules(), поэтому в ссылке может прийти любой набор параметров.
      *
      * @doc    stat/index
-     * @legacy frmSt: ComboBox «Вид»_AfterUpdate (fnRepaintFormStat), filt1..filt3, fltZ1; frmMinimum: FindElem_Change (FillStat)
+     * @legacy frmSt: ПолеСоСписком24_AfterUpdate (fnRepaintFormStat), fltZ1_AfterUpdate, FZ275_AfterUpdate,
+     *         fltStatProblEl_AfterUpdate, cboflt_AfterUpdate; frmMinimum: FindElem_Change (FillStat)
      */
     public function actionIndex()
     {
