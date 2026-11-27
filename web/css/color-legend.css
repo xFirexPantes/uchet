@@ -1,0 +1,105 @@
+/* Легенда цветов подформы: кнопка «? Цвета» в шапке списка и окно с расшифровкой.
+   Разметку собирает views/access/_color-legend.php, поведение — web/js/color-legend.js.
+   Классы с префиксом cl- не пересекаются со стилями экранов (vh-*). */
+
+.cl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    min-height: 20px;
+    padding: 0 .4rem;
+    font: inherit;
+    font-size: .72rem;
+    line-height: 1;
+    color: #1b5c72;
+    background: #fff;
+    border: 1px solid #c5e7f2;
+    border-radius: .3rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.cl-btn:hover { background: #40b3d8; border-color: #40b3d8; color: #fff; }
+
+.cl-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(27, 92, 114, .28);
+    align-items: center;
+    justify-content: center;
+}
+.cl-modal.on { display: flex; }
+
+.cl-box {
+    display: flex;
+    flex-direction: column;
+    min-width: 300px;
+    max-width: min(560px, 94vw);
+    max-height: calc(100vh - 24px);
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #c5e7f2;
+    border-radius: .6rem;
+    box-shadow: 0 16px 44px rgba(27, 92, 114, .3);
+    font: 12px system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+    color: #20414d;
+}
+
+.cl-head {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .4rem .7rem;
+    background: #eaf7fc;
+    border-bottom: 1px solid #c5e7f2;
+    color: #1b5c72;
+    font-weight: 600;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+.cl-x {
+    width: 22px;
+    height: 20px;
+    padding: 0;
+    font-size: 11px;
+    line-height: 1;
+    color: #1b5c72;
+    background: #fff;
+    border: 1px solid #c5e7f2;
+    border-radius: .3rem;
+    cursor: pointer;
+}
+.cl-x:hover { background: #40b3d8; border-color: #40b3d8; color: #fff; }
+
+.cl-body { padding: .6rem .75rem; overflow: auto; }
+.cl-note { margin: 0 0 .5rem; font-size: .72rem; color: #5b8598; }
+
+.cl-group { margin-bottom: .55rem; }
+.cl-group:last-child { margin-bottom: 0; }
+.cl-t {
+    padding-bottom: .15rem;
+    margin-bottom: .25rem;
+    border-bottom: 1px solid #c5e7f2;
+    font-size: .68rem;
+    font-weight: 600;
+    color: #1b5c72;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.cl-row { display: flex; align-items: center; gap: .4rem; padding: .05rem 0; font-size: .78rem; }
+.cl-sw {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(27, 92, 114, .25);
+    border-radius: .2rem;
+    background: #fff;
+}
+.cl-sw-text { flex: 0 0 auto; width: 14px; font-weight: 700; text-align: center; line-height: 14px; }
+.cl-txt { color: #20414d; }
+.cl-b { font-weight: 700; }

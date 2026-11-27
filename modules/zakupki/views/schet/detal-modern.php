@@ -229,6 +229,20 @@ $naklGrid = $this->render('_nakl', ['rows' => $d['nakl'], 'key' => 'schet.detal.
 
 // --- Договоры: активный договор подсвечен
 $dogsGrid = $this->render('_dogs', ['rows' => $d['dogs']]);
+// Цвета — ConditionalFormat14 подформы lstDogs (subfrmFObnovlen1_01)
+$dogsTools = '<div class="vh-tools">'
+    . $this->render('@app/views/access/_color-legend', [
+        'id'    => 'dogsColors',
+        'title' => 'Цвета в договорах',
+        'note'  => 'Подсвечен договор, действующий для этого счёта.',
+        'btn'   => 'a-btn',
+        'blocks' => [
+            ['t' => 'Дата договора', 'rows' => [
+                ['sw' => '#99ccff', 'label' => 'действующий договор ([IsActive]=True)'],
+            ]],
+        ],
+    ])
+    . '</div>';
 
 // --- Выбор контрагента по ИНН: поиск (Fnd → FillListINN) и список фирм (xListINN) в отдельном окне.
 // id Fnd и #firms сохранены: их ищет _edit.php (поиск, двойной щелчок — выбрать фирму).
@@ -282,7 +296,7 @@ $this->registerJsFile('@web/js/access-dialog.js');
     ],
     'tabs' => [
         ['title' => 'Накладные', 'html' => $naklTools . $naklGrid],
-        ['title' => 'Договоры', 'html' => $dogsGrid],
+        ['title' => 'Договоры', 'html' => $dogsTools . $dogsGrid],
     ],
 ]) ?>
 

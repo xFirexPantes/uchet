@@ -201,6 +201,20 @@ $posTools = '<div class="vh-tools">'
     . $button('btnShowLogDtaPost', 'Ист даты', 'История даты поставки выбранной позиции', ['act' => false, 'enabled' => true])
     . Html::a('⋯', Url::current(['all' => $all ? null : 1]), ['class' => 'a-btn' . ($all ? ' on' : ''),
         'id' => 'ShowHiddenBut', 'title' => 'Показать / спрятать скрытые столбцы позиций'])
+    . $this->render('@app/views/access/_color-legend', [
+        'id'    => 'posColors',
+        'title' => 'Цвета в позициях счёта',
+        'note'  => 'Цвет фона в столбце подсказывает состояние позиции.',
+        'btn'   => 'a-btn',
+        'blocks' => [
+            ['t' => 'Наименование', 'rows' => [
+                ['sw' => '#a7da4e', 'label' => 'по позиции уже есть накладная ([ExistNakl]=1)'],
+            ]],
+            ['t' => 'ID Пост.', 'rows' => [
+                ['sw' => '#fce6d4', 'label' => 'пустой ID подсвечен цветом счёта (PaintIDPost)'],
+            ]],
+        ],
+    ])
     . '</div>';
 
 // --- Резервы по выбранной позиции (subfrmMassInputSchRes): ColorFld = 1..4 красит одну из дат красным
@@ -217,6 +231,23 @@ $resCols = [
     ['ClassVl',     'Риск',     59,  []],
 ];
 $resGrid = $this->render('@app/views/access/_grid', ['tid' => 'res', 'key' => 'schet.elem.res', 'cols' => $resCols, 'rows' => $d['res']]);
+// Цвета — ровно те, что ставит ConditionalFormat14 подформы subfrmMassInputSchRes
+$resTools = '<div class="vh-tools">'
+    . $this->render('@app/views/access/_color-legend', [
+        'id'    => 'resColors',
+        'title' => 'Цвета в резервах позиции',
+        'note'  => 'Красная дата — срок поставки по этому резерву (ColorFld).',
+        'btn'   => 'a-btn',
+        'blocks' => [
+            ['t' => 'Даты', 'rows' => [
+                ['text' => 'ЖДПА', 'color' => '#ed1c24', 'label' => 'срок автоматического поступления (ColorFld=1)'],
+                ['text' => 'ПлСтА', 'color' => '#ff0000', 'label' => 'плановая дата автоматического старта (ColorFld=2)'],
+                ['text' => 'ЖДПД', 'color' => '#ff0000', 'label' => 'срок поступления по договору (ColorFld=3)'],
+                ['text' => 'ПлСтД', 'color' => '#ff0000', 'label' => 'плановая дата старта по договору (ColorFld=4)'],
+            ]],
+        ],
+    ])
+    . '</div>';
 
 // --- Накладные (lstNakl): двойной щелчок или «Посмотреть» открывает накладную
 $naklTools = '<div class="vh-tools">'
@@ -228,6 +259,20 @@ $naklGrid = $this->render('_nakl', ['rows' => $d['nakl'], 'key' => 'schet.elem.n
 
 // --- Договоры: активный договор подсвечен; высоту задаёт вкладка (пять строк таблицы)
 $dogsGrid = $this->render('_dogs', ['rows' => $d['dogs']]);
+// Цвета — ConditionalFormat14 подформы lstDogs (subfrmFObnovlen1_01)
+$dogsTools = '<div class="vh-tools">'
+    . $this->render('@app/views/access/_color-legend', [
+        'id'    => 'dogsColors',
+        'title' => 'Цвета в договорах',
+        'note'  => 'Подсвечен договор, действующий для этого счёта.',
+        'btn'   => 'a-btn',
+        'blocks' => [
+            ['t' => 'Дата договора', 'rows' => [
+                ['sw' => '#99ccff', 'label' => 'действующий договор ([IsActive]=True)'],
+            ]],
+        ],
+    ])
+    . '</div>';
 
 // --- Выбор поставщика: поиск по началу названия (Fnd → FillListINN) и список фирм (xListINN).
 // В Access список стоял прямо на форме; здесь он в отдельном окне, чтобы не занимать место.
@@ -290,8 +335,8 @@ $this->registerJsFile('@web/js/access-dialog.js');
     // Накладные, резервы и договоры — вкладками: в Access они стояли рядом и не помещались на экран
     'tabs' => [
         ['title' => 'Накладные', 'html' => $naklTools . $naklGrid],
-        ['title' => 'Резервы по позиции', 'html' => $resGrid],
-        ['title' => 'Договоры', 'html' => $dogsGrid],
+        ['title' => 'Резервы по позиции', 'html' => $resTools . $resGrid],
+        ['title' => 'Договоры', 'html' => $dogsTools . $dogsGrid],
     ],
 ]) ?>
 

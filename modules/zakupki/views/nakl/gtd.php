@@ -35,6 +35,10 @@ $box = 'position:absolute;overflow:auto;background:#fff;border:1px solid #7f9db9
         <?= $this->render('@app/views/access/_grid', $g['sch'] + ['rows' => $d['sch_rows']]) ?>
     </div>
     <div class="lbl" style="left:4px;top:319px">Позиции в файле</div>
+    <?php /* Легенда цветов подформы lstNakl (subfrmLoadKompel): ConditionalFormat14 */ ?>
+    <button type="button" class="a-btn" data-cl-open="gtdColors"
+            title="Что означают цвета в списке позиций файла"
+            style="left:150px;top:306px;width:80px;height:22px">? Цвета</button>
     <button type="button" class="a-btn" id="AssignElKompel" style="left:1138px;top:306px;width:105px;height:22px">Сопоставить</button>
     <button type="button" class="a-btn" id="DelAssign" title="Удалить сопоставление" style="left:1247px;top:306px;width:38px;height:22px">−</button>
     <div id="lstNakl" style="<?= $box ?>;left:4px;top:336px;width:1319px;height:270px">
@@ -45,6 +49,24 @@ $box = 'position:absolute;overflow:auto;background:#fff;border:1px solid #7f9db9
     <button type="button" class="a-btn" id="Put2Nakl" title="Выгрузить в накладную" style="left:76px;top:610px;width:38px;height:38px">⇩</button>
     <button type="button" class="a-btn" id="ClsFrm" title="Закрыть форму" style="left:1281px;top:610px;width:38px;height:38px">✕</button>
     <input type="file" id="xlFile" accept=".xls,.xlsx,.xlsm" style="display:none">
+    <?= $this->render('@app/views/access/_color-legend', [
+        'id'    => 'gtdColors',
+        'title' => 'Цвета в позициях файла',
+        'note'  => 'Цвет фона в столбце подсказывает, сопоставлена ли строка файла с позицией счёта.',
+        'btn'   => '',
+        'blocks' => [
+            ['t' => 'Маркировка', 'rows' => [
+                ['sw' => '#ffff00', 'label' => 'перегрузка строки ([OverLoad]=1)'],
+                ['sw' => '#ccffcc', 'label' => 'сопоставлена с позицией счёта ([IDSchEl]>0)'],
+            ]],
+            ['t' => 'Применение', 'rows' => [
+                ['sw' => '#ccffcc', 'label' => 'сопоставлена с позицией счёта ([IDSchEl]>0)'],
+            ]],
+            ['t' => 'В накл', 'rows' => [
+                ['sw' => '#ff0000', 'label' => 'красный — строка не сопоставлена (после «Выгрузить в накладную»)'],
+            ]],
+        ],
+    ]) ?>
 </div>
 <?php
 $actUrl = Json::encode(Url::to(['gtd-act', 'id' => $id, 'sch' => $sch]));
