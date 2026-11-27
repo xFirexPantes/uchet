@@ -71,13 +71,16 @@ perm: form:frmSt
 | `KolPok` | — | только вид 1 |
 | `SostProblEl` | b — «Ком.произв.» | все (в frmMinimum `Visible = True`) |
 | `DfltIsp` | b — «Информация» | только вид b (в frmMinimum `Visible = NotDefault`) |
-| `RequestSch` | — | виды 1, 2, 3 |
+| `RequestSch` | — (чекбокс) | виды 1, 2, 3 |
 | `Analog` | b — «Серия» | все |
 | `NotRec`, `VP5`, `NoAnalog` | — | все, кроме вида b |
 
 Порядок колонок — как в подформе `frmMinimum` (по `Left` контролов): `StatColumns::ORDER`. Поля процедуры, которых в подформе нет (`Элемент`, `Заказано`, `ЦенаОптовая`, `FirstName`, `ProblKol`, `UchetID`, `SharpName`, `CreatorCode`, `ExistMove`, `UPKoef`, `MinToBuy`, `TS`, `FullDolg`, `KolInRes`, `SrcProblEl`, `KolZak`, `Свободно`, `DtaPost`, `IsExactDate`, `MinStartZak`, `AppearMinTxt`, `AppearMinByAdd`, `NedopolByNakl`, `Avt`, `IsDelayed`, `NU`, `flgNU`), скрыты — список в `StatColumns::HIDDEN`. Незнакомые поля набора выводятся в конце как есть, чтобы новые версии процедур не теряли данные.
 
 - Щелчок по заголовку сортирует (повторный — в обратную сторону), ✕ в шапке списка возвращает исходный порядок процедуры.
+- «Счёт запр.» (`RequestSch`) — чекбокс, как `CheckBox` подформы `frmMinimum`. Клик ставит/снимает
+  галку: `RequestSch_MouseDown` → `UpdateNotRecFlg(txtID, "ReqSch")`, затем перезапрос строки.
+  Стоящая галка красит строку зелёным (`ConditionalFormat14`, `[RequestSch]=True`).
 - Щелчок по строке делает её текущей (подсветка, как `OnCurrent` в Access).
 - Двойной щелчок по строке открывает карточку элемента (`/sklad/elem/view?id=…`, форма Access `Fobnovlen1`)
   в отдельном окне — как `OpenKartElem` в Access. Список остаётся на месте.

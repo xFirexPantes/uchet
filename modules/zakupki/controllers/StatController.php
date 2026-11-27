@@ -76,6 +76,7 @@ class StatController extends BaseController
                 'rows'  => $res['rows'],
                 'cols'  => $cols,
                 'bnd'   => $res['footer']['bnd'],
+                'vid'   => (string)$res['filter']->vid,
                 'empty' => $res['error'] ? 'Список не загружен' : 'Нет записей, удовлетворяющих условию',
             ]),
             'count' => count($res['rows']),

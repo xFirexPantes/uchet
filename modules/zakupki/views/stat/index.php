@@ -350,6 +350,7 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                         'rows'  => $rows,
                         'cols'  => $cols,
                         'bnd'   => $footer['bnd'],
+                        'vid'   => (string)$filter->vid,
                         'empty' => $error ? 'Список не загружен' : 'Нет записей, удовлетворяющих условию',
                     ]) ?>
                     </tbody>
@@ -791,6 +792,40 @@ $this->registerJs(<<<'JS'
     });
 
     /**
+     * RequestSch_MouseDown: галка «Счёт запр.» в списке. Access переключает флаг процедурой
+     * UpdateNotRecFlg(txtID, "ReqSch") и перезапрашивает строку (StndOnLne).
+     */
+    tbl.addEventListener('change', async e => {
+        const chk = e.target.closest('input.vh-chk');
+        if (!chk || !cfg.actUrl) return;
+        const code = chk.dataset.code;
+        chk.disabled = true;
+        try {
+            const r = await fetch(cfg.actUrl, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest',
+                           'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ id: code, act: 'ReqSch' }).toString(),
+            });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const d = await r.json();
+            if (!d.ok) {
+                chk.checked = !chk.checked;             // вернуть прежнее состояние
+                alert(d.error || 'Не удалось изменить флаг «Счёт запр.»');
+                return;
+            }
+            // StndOnLne: перезапрос списка с возвратом к текущей записи
+            const tr = chk.closest('tr');
+            if (tr) tr.style.background = chk.checked ? '#b1ffb1' : '';
+        } catch (err) {
+            chk.checked = !chk.checked;
+            alert('Не удалось изменить флаг: ' + err.message);
+        } finally {
+            chk.disabled = false;
+        }
+    });
+
+    /**
      * Подсказка по колонке — Descr.Caption главной формы frmSt, который подставляли
      * обработчики *_GotFocus подформы frmMinimum. В вебе вместо фокуса ячейки — наведение:
      * у таблицы нет поячеечного фокуса, а смысл подсказки тот же.
@@ -838,6 +873,7 @@ $this->registerJs(<<<'JS'
      */
     tbl.addEventListener('dblclick', e => {
         if (tbl.dataset.resizing) return;
+        if (e.target.closest('input')) return;          // галка «Счёт запр.» — не открывать карточку
         const tr = e.target.closest('tbody tr[data-code]');
         if (!tr) return;
         const code = tr.dataset.code;
