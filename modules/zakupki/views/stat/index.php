@@ -92,7 +92,12 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
         <?php endif ?>
     </div>
 
-    <form method="get" action="<?= Url::to(['index']) ?>" id="frmSt" class="vh-form">
+    <?php /* Нижняя часть страницы — стек подформ frmSt в порядке Access:
+             SubfrmStat (список), SubMinimFilter, s (SubFrmStatSch), subFrmStAnalog1, Invoices.
+             Высота ограничена экраном: список — 25% остатка, остальные панели — по 18.75%. */ ?>
+    <div class="vh-stack">
+
+    <form method="get" action="<?= Url::to(['index']) ?>" id="frmSt" class="vh-form vh-pane-main">
         <?= Html::hiddenInput('sort', $filter->sort) ?>
         <?= Html::hiddenInput('dir', $filter->dir) ?>
         <?php /* Вид на момент отправки: по нему StatFilter понимает, что вид сменили,
@@ -396,6 +401,24 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
         </section>
     </form>
 
+    <?php /* SubMinimFilter — список резервов по текущему элементу.
+             Колонки Access: Дата, Название темы, Заказчик, Ответственный. */ ?>
+    <section class="vh-panel" id="stReserves">
+        <div class="vh-panel-head"><span>Резервы (SubMinimFilter)</span></div>
+        <div class="vh-list-scroll">
+            <div class="vh-stub">Тут будет список резервов текущего элемента.</div>
+        </div>
+    </section>
+
+    <?php /* s — подформа SubFrmStatSch: счета/накладные по элементу
+             (в Access колонки Недополучено = NedopolByNakl, Количество = Кол). */ ?>
+    <section class="vh-panel" id="stSch">
+        <div class="vh-panel-head"><span>Счета элемента (SubFrmStatSch)</span></div>
+        <div class="vh-list-scroll">
+            <div class="vh-stub">Тут будет список счетов по текущему элементу.</div>
+        </div>
+    </section>
+
     <section class="vh-panel vh-an">
         <div class="vh-panel-head">
             <span>Аналоги <span class="vh-an-code" id="stAnCode"></span></span>
@@ -403,6 +426,17 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
         </div>
         <div class="vh-list-scroll vh-an-scroll" id="stAnBox"></div>
     </section>
+
+    <?php /* Invoices — подформа SubFrmInvoices (источник xp_GetInvoices):
+             Поставщик, Дата, Срок,недель, Цена,$. */ ?>
+    <section class="vh-panel" id="stInvoices">
+        <div class="vh-panel-head"><span>Счета поставщиков (Invoices)</span></div>
+        <div class="vh-list-scroll">
+            <div class="vh-stub">Тут будут счета поставщиков по текущему элементу.</div>
+        </div>
+    </section>
+
+    </div><?php /* .vh-stack */ ?>
 
     <?php /* Диалог текста: frmShowPrim (ветки 58/81/83) — примечание элемента, комментарий производства, просмотр */ ?>
     <div class="vh-sdlg" id="stDlg" hidden>
@@ -433,7 +467,10 @@ $this->registerJsFile('@web/js/interval.js');
 $this->registerCss(<<<'CSS'
 .vh-stat { --vh-blue:#40B3D8; --vh-blue-d:#2f8baa; --vh-blue-l:#eaf7fc; --vh-blue-b:#c5e7f2; --vh-ink:#1b5c72;
     background:#f4fafc; padding:.4rem .7rem .6rem; box-sizing:border-box;
-    font:12px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; color:#20414d; min-height:calc(100vh - 92px); }
+    font:12px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; color:#20414d;
+    /* Вся страница — одна колонка высотой в экран: шапка и фильтры занимают своё,
+       остаток делят панели подформ (см. .vh-stack). */
+    height:calc(100vh - 92px); display:flex; flex-direction:column; overflow:auto; }
 #main > .container.vh-wide { max-width:100%; width:100%; padding-left:.4rem; padding-right:.4rem; }
 
 /* Шапка: название и число строк слева, кнопки справа */
@@ -488,15 +525,24 @@ $this->registerCss(<<<'CSS'
 .vh-inp-w { width:180px; } .vh-inp-n { width:96px; text-align:right; }
 input[type=date].vh-inp { padding:0 .2rem; }
 
-/* Панели списка и аналогов */
+/* Панели списка и подформ: стек на остаток экрана.
+   Список элементов (SubfrmStat) — 25%, остальные четыре панели — по 18.75% (поровну от остатка).
+   Пропорции заданы через flex-grow: 1 против 0.75 при одинаковом basis. */
+.vh-stack { display:flex; flex-direction:column; gap:.4rem; flex:1 1 auto; min-height:0; }
+.vh-stack > * { flex:0.75 1 0; min-height:5.5rem; display:flex; flex-direction:column; }
+.vh-stack > .vh-pane-main { flex:1 1 0; min-height:7rem; }
+.vh-pane-main > .vh-panel { flex:1 1 auto; min-height:0; }
+
 .vh-panel { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.5rem;
-    box-shadow:0 1px 3px rgba(64,179,216,.12); overflow:hidden; }
-.vh-panel-head { display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+    box-shadow:0 1px 3px rgba(64,179,216,.12); overflow:hidden; display:flex; flex-direction:column; min-height:0; }
+.vh-panel-head { display:flex; align-items:center; justify-content:space-between; gap:.5rem; flex:0 0 auto;
     padding:.22rem .6rem; background:var(--vh-blue-l); border-bottom:1px solid var(--vh-blue-b);
     color:var(--vh-ink); font-weight:600; font-size:.68rem; text-transform:uppercase; letter-spacing:.03em; }
 .vh-tools { display:flex; align-items:center; gap:.35rem; text-transform:none; letter-spacing:0; font-weight:400; }
 
-.vh-list-scroll { overflow:auto; max-height:calc(100vh - 330px); }
+.vh-list-scroll { overflow:auto; flex:1 1 auto; min-height:0; }
+/* Заглушка нереализованной подформы */
+.vh-stub { padding:.6rem; color:#9db9c4; font-style:italic; }
 .vh-list { border-collapse:collapse; width:100%; font-size:12px; }
 .vh-list th { position:sticky; top:0; z-index:1; background:var(--vh-blue-l); color:var(--vh-ink);
     font-weight:600; font-size:.68rem; text-transform:uppercase; letter-spacing:.02em;
@@ -525,9 +571,8 @@ input[type=date].vh-inp { padding:0 .2rem; }
 .vh-stat-hint:empty::before { content:'Наведите курсор на ячейку — появится подсказка о цветах и обозначениях'; color:#9db9c4; }
 
 /* Подформа аналогов (subFrmStAnalog): свой заголовок и полоса прокрутки */
-.vh-an { margin-top:.4rem; }
 .vh-an-code { text-transform:none; letter-spacing:0; font-weight:400; color:#5b8598; }
-.vh-an-scroll { max-height:220px; min-height:34px; padding:.1rem .2rem; }
+.vh-an-scroll { min-height:34px; padding:.1rem .2rem; }
 
 /* Диалог текста (frmShowPrim): примечание, комментарий, выбор состояния */
 .vh-sdlg { position:fixed; inset:0; z-index:1050; display:flex; align-items:center; justify-content:center;
@@ -549,7 +594,12 @@ input[type=date].vh-inp { padding:0 .2rem; }
 .vh-sdlg-msg { margin-right:auto; color:#a4232b; }
 .vh-sdlg-msg.ok { color:#1b7a3d; }
 
-@media (max-width:1199.98px) { .vh-list-scroll { max-height:none; } }
+@media (max-width:1199.98px) {
+    /* На узком экране пропорции не работают: панели получают свою высоту, страница прокручивается */
+    .vh-stat { height:auto; min-height:calc(100vh - 92px); }
+    .vh-stack > *, .vh-stack > .vh-pane-main { flex:0 0 auto; }
+    .vh-list-scroll { max-height:50vh; }
+}
 CSS);
 
 $this->registerJs('window.ST = ' . Json::encode([
