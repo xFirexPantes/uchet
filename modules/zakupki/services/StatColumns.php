@@ -31,7 +31,7 @@ class StatColumns
         'SharpName', 'NmeCat', 'CreatorCode', 'ExistMove', 'UPKoef', 'UpKoef', 'MinToBuy', 'TS',
         'FullDolg', 'KolInRes', 'SrcProblEl', 'KolZak', 'Свободно', 'DtaPost', 'IsExactDate',
         'MinStartZak', 'AppearMinTxt', 'AppearMinByAdd', 'NedopolByNakl', 'Avt', 'IsDelayed',
-        'WhatFirmTxt', 'NU', 'flgNU', 'Активный', 'Примечание', 'Серия',
+        'WhatFirmTxt', 'WF', 'NU', 'flgNU', 'Активный', 'Примечание', 'Серия',
     ];
 
     /**
@@ -85,6 +85,48 @@ class StatColumns
     ];
 
     /**
+     * Места контролов подформы frmMinimum в порядке Left (слева направо).
+     *
+     * В Access часть мест переиспользуется: контрол `МинКоличество` (Left = 12468)
+     * в разных видах показывает `Долг`, `МинКоличество` или `Резерв` (fnRepaintFormStat
+     * меняет ControlSource), контрол `txtSV` (Left = 14823) — `txtSV`, `OrderEls`
+     * или вычисляемое поле. Поэтому место — это список полей-кандидатов: берём первое,
+     * которое реально пришло в наборе, остальные не выводим (иначе колонки дублируются
+     * и съезжает порядок).
+     *
+     * Порядок сверен с Left контролов: Код 450, Наименование 1095, Analog 3921,
+     * Номинал 5899, Корпус 7819, Изготовитель 9394, ГдеКупил 10967,
+     * МинКоличество 12468, FZ275Kol 13203, Количество 13938, txtSV 14823,
+     * OrderKat 15708, KolPok 16443, Недополучено 16863, Поле18 17758, LowR 21015,
+     * SostProblEl 22095, NotRec 22326, VP5 22847, NoAnalog 23312, DfltIsp 23470,
+     * RequestSch 24661.
+     */
+    public const SLOTS = [
+        ['Код'],
+        ['Наименование'],
+        ['Analog'],
+        ['Номинал'],
+        ['Корпус'],
+        ['Изготовитель'],
+        ['ГдеКупил'],
+        ['Долг', 'МинКоличество', 'Резерв'],
+        ['FZ275Kol'],
+        ['Количество', 'Кол'],
+        ['txtSV', 'OrderEls'],
+        ['OrderKat'],
+        ['KolPok'],
+        ['Недополучено'],
+        ['ПримечаниеДолг'],
+        ['LowR'],
+        ['SostProblEl'],
+        ['NotRec'],
+        ['VP5'],
+        ['NoAnalog'],
+        ['DfltIsp'],
+        ['RequestSch'],
+    ];
+
+    /**
      * Колонки, которые Access скрывает в отдельных видах (fnRepaintFormStat).
      *
      * Вид 5: `fBl = Not lgOp = "5"` — МинКоличество и txtSV (и их подписи) скрыты;
@@ -132,7 +174,7 @@ class StatColumns
         'Недополучено'  => ['b' => 'Заказано'],
         'LowR'          => ['7' => 'Дешевле,$', 'b' => 'Бл.старт заказа'],
         'MinStartZak'   => ['b' => 'Бл.старт заказа'],
-        'FZ275Kol'      => ['1' => 'Заказать', '3' => 'Заказать', 'b' => 'Мин.'],
+        'FZ275Kol'      => ['3' => 'Заказать', 'b' => 'Мин.'],
         'OrderKat'      => ['1' => 'Ближ. поставка', 'b' => 'Ближ. поставка'],
         'SostProblEl'   => ['b' => 'Ком.произв.'],
         'DfltIsp'       => ['b' => 'Информация'],
@@ -265,13 +307,17 @@ class StatColumns
             }
         }
 
-        // Порядок как в подформе: сначала ORDER, затем всё остальное в порядке набора
+        // Порядок как в подформе: сначала места контролов (SLOTS), затем всё остальное
         $ordered = [];
-        foreach (self::ORDER as $f) {
-            if (isset($fields[$f])) {
-                $ordered[$f] = true;
-                unset($fields[$f]);
+        foreach (self::SLOTS as $slot) {
+            $pick = null;
+            foreach ($slot as $f) {
+                if (isset($fields[$f])) { $pick = $f; break; }
             }
+            if ($pick === null) continue;
+            $ordered[$pick] = true;
+            // Альтернативы этого места — то же место подформы, второй раз не выводим
+            foreach ($slot as $f) unset($fields[$f]);
         }
         foreach (array_keys($fields) as $f) {
             $ordered[$f] = true;
