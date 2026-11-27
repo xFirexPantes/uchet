@@ -84,6 +84,29 @@ class StatController extends BaseController
     }
 
     /**
+     * Резервы текущего элемента — подформа SubMinimFilter формы frmSt.
+     *
+     * Грузятся по щелчку по строке списка, как перезапрос подформы на Form_Current.
+     *
+     * @legacy frmSt: подформа SubMinimFilter (источник exec xp_SubMinimumFilter @txtID, @Rgm)
+     */
+    public function actionReserves(int $id, string $vid = '1')
+    {
+        $res = (new StatService())->reserves($id, $vid);
+
+        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+        return [
+            'html'  => $this->renderPartial('_reserves', [
+                'rows'  => $res['rows'],
+                'cols'  => \app\modules\zakupki\services\StatColumns::reserveColumns($res['rows']),
+                'error' => $res['error'],
+            ]),
+            'count' => count($res['rows']),
+            'error' => $res['error'],
+        ];
+    }
+
+    /**
      * Аналоги текущего элемента — подформа аналогов «Статистики» (subFrmStAnalog).
      *
      * Грузятся по щелчку по строке списка, как Form_Current подформы в Access.

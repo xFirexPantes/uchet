@@ -416,6 +416,43 @@ class StatService
     }
 
     /**
+     * Резервы текущего элемента — подформа SubMinimFilter формы frmSt.
+     *
+     * Источник: exec dbo.xp_SubMinimumFilter @txtID, @Rgm, где
+     *   @txtID — «Код» текущей строки списка (SkladID),
+     *   @Rgm   — вид списка строкой (в процедуре ветка расчёта долга для '1', '5', '8').
+     *
+     * Процедура сама определяет, из-за каких резервов элемент попал в долг
+     * (IsGuilty = '!'), и отдаёт готовые строки в порядке Access:
+     * IDRes = 8579 первым, затем виновные, затем по DtaPost/Дате убыв.
+     *
+     * В форме колонка «В» вычисляемая: =IIf([IsExactDate]=True,"!",""), поэтому
+     * добавляем её здесь, а IsExactDate/DtaPost остаются служебными.
+     *
+     * @return array{rows:array, error:?string}
+     */
+    public function reserves(int $skladId, string $vid = '1'): array
+    {
+        if ($skladId <= 0) {
+            return ['rows' => [], 'error' => null];
+        }
+
+        try {
+            $rows = $this->proc('dbo.xp_SubMinimumFilter ?, ?', [$skladId, $vid])->queryAll();
+        } catch (\Throwable $e) {
+            Yii::error('xp_SubMinimumFilter ' . $skladId . '/' . $vid . ': ' . $e->getMessage(), __METHOD__);
+            return ['rows' => [], 'error' => 'Не удалось получить резервы: ' . $e->getMessage()];
+        }
+
+        foreach ($rows as &$r) {
+            $r['В'] = !empty($r['IsExactDate']) ? '!' : '';
+        }
+        unset($r);
+
+        return ['rows' => $rows, 'error' => null];
+    }
+
+    /**
      * Примечание элемента (двойной щелчок по «Примечание»): CommonStartSP6(ID, xp_SkladUpdPrim, текст, 0, 500).
      *
      * @return array{ok:bool, error:?string} 1 — изменено, 2 — нет прав, иное — не удалось (как в Access)

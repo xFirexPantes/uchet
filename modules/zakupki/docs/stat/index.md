@@ -2,7 +2,7 @@
 title: Статистика
 access_form: frmSt
 tz: []
-procs: [dbo.xp_GetVidSel, dbo.xp_frmStNewRS1_0, dbo.xp_frmStNewRS1_1, dbo.xp_frmStNewRS2_0, dbo.xp_frmStNewRS3_0, dbo.xp_frmStNewRS4_0, dbo.xp_frmStNewRS5_0, dbo.xp_frmStNewRS7_0, dbo.xp_frmStNewRS8, dbo.xp_frmStNewRS8_0, dbo.xp_frmStNewRS9_0, dbo.xp_frmStNewRSa_0, dbo.xp_frmStNewRSb, dbo.xp_frmStNewRSb_0, dbo.xp_frmStRS1Analog, dbo.xp_GetWhatFirm, dbo.xp_GetSkladManagersNew, dbo.xp_SkladTrackingSprLst, dbo.xp_frmStLstFZ275, dbo.xp_GetKursByVal, dbo.xp_GetAdr, dbo.xp_SkladUpdPrim, dbo.xp_SkladTrackingUpdComm, dbo.xp_StatWorkWithProblemLstSost, dbo.xp_StatWorkWithProblemUpdSost]
+procs: [dbo.xp_GetVidSel, dbo.xp_frmStNewRS1_0, dbo.xp_frmStNewRS1_1, dbo.xp_frmStNewRS2_0, dbo.xp_frmStNewRS3_0, dbo.xp_frmStNewRS4_0, dbo.xp_frmStNewRS5_0, dbo.xp_frmStNewRS7_0, dbo.xp_frmStNewRS8, dbo.xp_frmStNewRS8_0, dbo.xp_frmStNewRS9_0, dbo.xp_frmStNewRSa_0, dbo.xp_frmStNewRSb, dbo.xp_frmStNewRSb_0, dbo.xp_frmStRS1Analog, dbo.xp_SubMinimumFilter, dbo.xp_GetWhatFirm, dbo.xp_GetSkladManagersNew, dbo.xp_SkladTrackingSprLst, dbo.xp_frmStLstFZ275, dbo.xp_GetKursByVal, dbo.xp_GetAdr, dbo.xp_SkladUpdPrim, dbo.xp_SkladTrackingUpdComm, dbo.xp_StatWorkWithProblemLstSost, dbo.xp_StatWorkWithProblemUpdSost]
 perm: form:frmSt
 ---
 

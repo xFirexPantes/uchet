@@ -140,6 +140,89 @@ class StatColumns
     ];
 
     /**
+     * Колонки подформы резервов SubMinimFilter.
+     *
+     * Источник — exec dbo.xp_SubMinimumFilter @txtID, @Rgm. Состав полей и подписи
+     * сверены с колонками формы (ControlSource и Caption подписей Надпись54/51/23/39/41/42/30/56):
+     *   Дата, В (=IIf([IsExactDate]=True,"!","")), Осталось (поле Razn — «5н.3д.»),
+     *   Расч.ст-ть,$ (CalcPrc), Таргет,USD (Trg), Макс. цена закуп.,USD (MaxPrc),
+     *   Название темы, Примечание (Prim), Заказчик (Firma), Срок не согл. (DisagreeDate),
+     *   План.старт (PlandateCmplx), ФЗ275., Ответственный, ИНН, Исп-ль (Isp),
+     *   Отв.техподдержки (OtvIng), Изделий, Кол-во (Резерв), Всего (AllKol),
+     *   Уровень токсичности, Заказ (NumZakas), Область применения (ApplyArea).
+     *
+     * @var array<string, array{0:string,1:int,2:bool}>
+     */
+    public const RESERVE_META = [
+        'Дата'          => ['Дата', 90, false],
+        'В'             => ['Точ.', 40, false],
+        'Razn'          => ['Осталось', 90, false],
+        'CalcPrc'       => ['Расч.ст-ть,$', 90, true],
+        'Trg'           => ['Таргет,USD', 90, true],
+        'MaxPrc'        => ['Макс. цена закуп.,USD', 110, true],
+        'Название темы' => ['Название темы', 160, false],
+        'Prim'          => ['Примечание', 200, false],
+        'Firma'         => ['Заказчик', 140, false],
+        'DisagreeDate'  => ['Срок не согл.', 100, false],
+        'PlandateCmplx' => ['План.старт', 100, false],
+        'FZ275'         => ['ФЗ275.', 80, false],
+        'Ответственный' => ['Ответственный', 110, false],
+        'INN'           => ['ИНН', 100, false],
+        'Isp'           => ['Исп-ль', 90, false],
+        'OtvIng'        => ['Отв.техподдержки', 120, false],
+        'Изделия'       => ['Изделий', 80, true],
+        'Резерв'        => ['Кол-во', 80, true],
+        'AllKol'        => ['Всего', 80, true],
+        'ToxicLvl'      => ['Уровень токсичности', 120, false],
+        'NumZakas'      => ['Заказ', 80, false],
+        'ApplyArea'     => ['Область применения', 140, false],
+    ];
+
+    /** Порядок колонок резервов, как в форме (ColumnOrder, затем Left). */
+    public const RESERVE_ORDER = [
+        'Дата', 'В', 'Razn', 'CalcPrc', 'Trg', 'MaxPrc', 'Название темы', 'Prim',
+        'Firma', 'DisagreeDate', 'PlandateCmplx', 'FZ275', 'Ответственный', 'INN',
+        'Isp', 'OtvIng', 'Изделия', 'Резерв', 'AllKol', 'ToxicLvl', 'NumZakas', 'ApplyArea',
+    ];
+
+    /**
+     * Служебные поля резервов.
+     *
+     * Colr — скрыт в frmSt (ColumnHidden = True), Idres/IDProcess/DtaPost/IsExactDate —
+     * технические: DtaPost и IsExactDate нужны только для вычисления «В» и проверок VBA,
+     * IDProcess — для отметок «работа с закупкой элемента» в frmMinimum.
+     */
+    public const RESERVE_HIDDEN = ['Colr', 'Idres', 'IDRes', 'IDProcess', 'DtaPost', 'IsExactDate', 'IsGuilty'];
+
+    /**
+     * Колонки резервов по фактическим полям результата.
+     *
+     * @param array $rows строки источника
+     * @return array<int, array{0:string,1:string,2:int,3:bool}> [поле, подпись, ширина, вправо]
+     */
+    public static function reserveColumns(array $rows): array
+    {
+        $fields = [];
+        foreach ($rows as $r) {
+            foreach (array_keys($r) as $k) {
+                if (!in_array($k, self::RESERVE_HIDDEN, true)) $fields[$k] = true;
+            }
+        }
+
+        $out = [];
+        foreach (self::RESERVE_ORDER as $f) {
+            if (!isset($fields[$f])) continue;
+            [$title, $width, $right] = self::RESERVE_META[$f] ?? [$f, 0, false];
+            $out[] = [$f, $title, $width, $right];
+            unset($fields[$f]);
+        }
+        foreach (array_keys($fields) as $f) {
+            $out[] = [$f, $f, 0, false];
+        }
+        return $out;
+    }
+
+    /**
      * Колонки по фактическим полям результата: у каждого вида своя процедура,
      * поэтому состав колонок берём из данных, а порядок — из ORDER (как в frmMinimum).
      *

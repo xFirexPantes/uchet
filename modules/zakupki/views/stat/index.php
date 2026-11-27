@@ -401,13 +401,17 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
         </section>
     </form>
 
-    <?php /* SubMinimFilter — список резервов по текущему элементу.
-             Колонки Access: Дата, Название темы, Заказчик, Ответственный. */ ?>
+    <?php /* SubMinimFilter — резервы текущего элемента.
+             Источник: exec dbo.xp_SubMinimumFilter @txtID, @Rgm (Rgm — вид списка).
+             Колонки: Дата, Точ., Осталось, Расч.ст-ть, Таргет, Макс.цена, тема, примечание,
+             заказчик, срок согласования, план.старт, ФЗ275, ответственный, ИНН, исполнитель,
+             отв.техподдержки, изделий, кол-во, всего, токсичность, заказ, область применения. */ ?>
     <section class="vh-panel" id="stReserves">
-        <div class="vh-panel-head"><span>Резервы (SubMinimFilter)</span></div>
-        <div class="vh-list-scroll">
-            <div class="vh-stub">Тут будет список резервов текущего элемента.</div>
+        <div class="vh-panel-head">
+            <span>Резервы <span class="vh-an-code" id="stResCode"></span></span>
+            <span class="vh-tools" id="stResInfo">выберите строку в списке</span>
         </div>
+        <div class="vh-list-scroll" id="stResBox"></div>
     </section>
 
     <?php /* s — подформа SubFrmStatSch: счета/накладные по элементу
@@ -607,6 +611,7 @@ CSS);
 $this->registerJs('window.ST = ' . Json::encode([
     'rowsUrl' => Url::to(['rows']),
     'analogsUrl' => Url::to(['analogs']),        // аналоги текущего элемента (subFrmStAnalog)
+    'reservesUrl' => Url::to(['reserves']),      // резервы текущего элемента (SubMinimFilter)
     'statusesUrl' => Url::to(['statuses']),      // состояния проблемы (frmfndStatus, OpenArgs 25)
     'actUrl' => Url::to(['act']),                // сохранение примечания / комментария / состояния
     'cardUrl' => Url::to(['/sklad/elem/view']),   // карточка элемента (Fobnovlen1) — модуль «Склад»
@@ -645,6 +650,7 @@ $this->registerJs(<<<'JS'
         cur = code || '';
         [...body.rows].forEach(tr => tr.classList.toggle('sel', !!cur && tr.dataset.code === cur));
         loadAnalogs(cur);
+        loadReserves(cur);
     };
 
     /**
@@ -680,6 +686,45 @@ $this->registerJs(<<<'JS'
             const x = document.createElement('div');
             x.className = 'vh-alert';
             x.textContent = 'Не удалось получить аналоги: ' + e.message;
+            box.replaceChildren(x);
+        }
+    }
+
+    /**
+     * Резервы текущего элемента — подформа SubMinimFilter.
+     * В Access подформа перезапрашивалась вместе с текущей записью:
+     * exec xp_SubMinimumFilter @txtID, @Rgm (Rgm — вид списка).
+     */
+    async function loadReserves(code) {
+        const box  = document.getElementById('stResBox');
+        const info = document.getElementById('stResInfo');
+        const lab  = document.getElementById('stResCode');
+        if (!box || !cfg.reservesUrl) return;
+
+        if (!code) {
+            box.replaceChildren();
+            if (lab) lab.textContent = '';
+            if (info) info.textContent = 'выберите строку в списке';
+            return;
+        }
+
+        if (lab) lab.textContent = '№ ' + code;
+        if (info) info.textContent = 'загрузка…';
+        try {
+            const r = await fetch(cfg.reservesUrl + '?id=' + encodeURIComponent(code)
+                + '&vid=' + encodeURIComponent(cfg.vid || '1'),
+                { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const d = await r.json();
+            if (cur !== code) return;
+            box.innerHTML = d.html || '';
+            if (info) info.textContent = d.error ? '' : (d.count ? 'строк: ' + d.count : 'резервов нет');
+        } catch (e) {
+            if (cur !== code) return;
+            if (info) info.textContent = '';
+            const x = document.createElement('div');
+            x.className = 'vh-alert';
+            x.textContent = 'Не удалось получить резервы: ' + e.message;
             box.replaceChildren(x);
         }
     }

@@ -1,3 +1,5 @@
+
+
 USE [TrxSQL]
 GO
 /****** Объект:  StoredProcedure [dbo].[xp_frmStNewRS1_0]    Дата создания скрипта: 27.11.2026 11:19:02 ******/ 
@@ -3933,3 +3935,535 @@ end
 drop table #TmpFrm 
 drop table #TmpAvt
 END
+
+USE [TrxSQL]
+GO
+/****** Объект:  StoredProcedure [dbo].[xp_GetVidSel]    Дата создания скрипта: 27.11.2026 13:00:25 ******/ 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- Batch submitted through debugger: SQLQuery19.sql|7|0|C:\Documents and Settings\leo\Local Settings\Temp\~vsECB.sql
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	список типов выбора в форме frmSt
+-- =============================================
+ALTER PROCEDURE [dbo].[xp_GetVidSel]
+AS
+BEGIN
+SET NOCOUNT ON;
+SELECT dbo.tblStatistikSub.Name, dbo.tblStatistikSub.Num FROM dbo.tblStatistikSub WITH (NOLOCK)
+END
+
+
+USE [TrxSQL]
+GO
+/****** Объект:  StoredProcedure [dbo].[xp_SubMinimumFilter]    Дата создания скрипта: 27.11.2026 13:06:05 ******/ 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/* источник данных для формы SubMinimumFilter (в frmSt) */
+--похожая процедура xp_StatGetWarn
+ALTER PROCEDURE [dbo].[xp_SubMinimumFilter]
+(@txtID int=0,@Rgm varchar(2)='1')
+AS 
+BEGIN
+SET NOCOUNT ON;
+--формируем таблицу с резервами, из-за которых элемент стал в долгах
+if @Rgm='1' or @Rgm='5' or @Rgm='8'  begin
+DECLARE @tmp int
+DECLARE @kol int
+DECLARE @IDRes int
+DECLARE @t table (IDRes int)
+SET @tmp = 0
+if @Rgm='1' begin
+	exec @tmp = dbo.xp_SumNedopolKolByElemNew @txtID,@tmp
+end
+SELECT @tmp = @tmp+ isnull(Количество,0) FROM dbo.Sklad WITH (NOLOCK) WHERE [Код] = @txtID
+DECLARE rst CURSOR FOR
+SELECT     dbo.tblReserv.Изделия * dbo.tblReservirSub.Резерв AS Кол, dbo.tblReserv.IDRes
+FROM         dbo.tblReserv WITH (NOLOCK) INNER JOIN
+                      dbo.tblReservirSub WITH (NOLOCK) ON dbo.tblReserv.IDRes = dbo.tblReservirSub.ResID
+WHERE     (dbo.tblReserv.Riba = 0) AND (dbo.tblReservirSub.SkladID = @txtID)
+ORDER BY dbo.tblReserv.Sort
+OPEN rst
+FETCH NEXT FROM rst INTO @kol,@IDRes
+While @@FETCH_STATUS = 0 Begin
+	SET @tmp=@tmp-@kol
+	if @tmp<0 begin
+		INSERT INTO @t (IDRes) VALUES (@IDRes)
+	end
+	FETCH NEXT FROM rst INTO @kol,@IDRes
+END 
+CLOSE rst
+DEALLOCATE rst
+-- до сюда формирование таблицы
+SELECT IDRes,Дата,[Название темы],Firma, [Ответственный],Prim,IsExactDate,DtaPost,Изделия,Резерв, AllKol,IsGuilty,[Isp],DisagreeDate,
+OtvIng,FZ275,IDProcess,NumZakas,IDRes,
+case when RaznDays< 1 THEN '' ELSE cast(RaznDays / 7 as varchar(10)) + 'н.' + case when RaznDays-7*(RaznDays / 7)>0 THEN cast(RaznDays-7*(RaznDays / 7) as varchar(10)) + 'д.' ELSE '' END END as Razn,
+CASE WHEN IsGuilty ='!' then ISNULL(ToxicLvlTxt,'') ELSE '' END as ToxicLvl,
+CASE WHEN IsGuilty ='!' then ISNULL(INN,'') ELSE '' END as INN,
+CASE WHEN IsGuilty ='!' then ISNULL(ApplyAreaTxt,'') ELSE '' END as ApplyArea,case when Trg = 0 Then '-' else cast( cast(Trg as decimal(12,4)) as varchar(10)) end as Trg, Colr,
+case when Trg = 0 Then '-' else cast(case when Ddif < 4 Then cast(round(Trg*1.03,4) as decimal(12,4)) else cast(round(Trg*1.0500,4) as decimal(12,4)) end  as varchar(10)) end as MaxPrc,
+PlandateCmplx,
+CASE WHEN IsGuilty ='!' and Trg = 0 THEN cast(cast(PrcCalc as decimal(12,4)) as varchar(10)) ELSE '-' END as CalcPrc
+FROM
+(SELECT     dbo.tblReserv.IDRes, dbo.tblReserv.Дата, dbo.tblReserv.[Название темы],round(isnull(dbo.tblReservirsub.Trg ,0),4) as Trg,isnull(dbo.tblReservirsub.Colr,0) as Colr, dbo.tblFirma.Firma, 
+			dbo.tblIspolnit01.FirstName as [Ответственный], dbo.tblReserv.Примечание as Prim, dbo.tblReserv.IsExactDate, ISNULL(dbo.tblReservirsub.Ddif,0) as Ddif,
+			case when dbo.tblReservirSub.Avt = 0 THEN dbo.tblReserv.DtaPost ELSE isnull(dbo.tblReserv.DtaPostAvt,dbo.tblReserv.DtaPost) END as DtaPost,dbo.tblReserv.Изделия,dbo.tblReservirSub.Резерв,dbo.tblReserv.Изделия*dbo.tblReservirSub.Резерв as AllKol,
+		   CASE WHEN isnull(qryR.IDRes,0)>0 THEN '!' ELSE '' END as IsGuilty,dbo.tblIsp2.[Name] as [Isp],
+		   dbo.tblReserv.DisagreeDate,dbo.GetOtv4QueryKomplSQL(dbo.tblReserv.IDRes) as OtvIng,
+		   CASE WHEN dbo.tblReserv.FZ275ID >0 THEN 1 ELSE 0 END as FZ275,dbo.tblProcessSum.IDProcess,
+		   dbo.tblProcess.NameProcess  as NumZakas,
+		   DATEDIFF(d,cast(convert(char(8),GetDate(),112) + ' 00:00:00' as datetime),cast(convert(char(8),case when dbo.tblReservirSub.Avt = 0 THEN dbo.tblReserv.DtaPost ELSE dbo.tblReserv.DtaPostAvt END,112) + ' 00:00:00' as datetime)) as RaznDays,
+		   dbo.tblReserv.Sort,dbo.qryToxicLvl.ToxicLvlTxt,dbo.qryToxicLvl.INN,dbo.qryToxicLvl.ApplyAreaTxt,
+			--по ТЗ 479 Маслюкова (14.01.22)
+		   case when dbo.tblReservirSub.Avt = 0 THEN qMnl.PlandateMnl ELSE isnull(qAvt.PlandateAvt,qMnl.PlandateMnl) END as PlandateCmplx,
+		   qCalcPrice.Prc as PrcCalc
+		   
+FROM         dbo.tblReserv WITH (NOLOCK) INNER JOIN
+                      dbo.tblReservirSub WITH (NOLOCK) ON dbo.tblReserv.IDRes = dbo.tblReservirSub.ResID INNER JOIN
+                      dbo.tblFirma WITH (NOLOCK) ON dbo.tblReserv.Zac = dbo.tblFirma.UchetID
+LEFT OUTER JOIN @t as qryR ON qryR.IDRes = dbo.tblReserv.IDRes
+LEFT OUTER JOIN dbo.tblIsp2 WITH (NOLOCK) ON dbo.tblReserv.WhatFirm =dbo.tblIsp2.IspID 
+LEFT OUTER JOIN dbo.tblIspolnit01 WITH (NOLOCK) ON dbo.tblReserv.[Owner] = dbo.tblIspolnit01.IspolnitID 
+LEFT OUTER JOIN dbo.tblProcessSum WITH (NOLOCK) ON dbo.tblReserv.IDRes = dbo.tblProcessSum.IDRes 
+LEFT OUTER JOIN dbo.tblProcess WITH (NOLOCK) ON dbo.tblProcessSum.IDProcess = dbo.tblProcess.ProcessID 
+left outer join dbo.qryToxicLvl WITH (NOLOCK) ON dbo.tblReserv.Zac = dbo.qryToxicLvl.UchetID
+--по ТЗ 412 Ивановой (26.02.21)
+left outer join
+(select MIN(PlanDate) as PlandateMnl,dbo.tblProcessSum.IDRes 
+FROM dbo.tblSakas1 with (nolock)
+inner join dbo.tblProcessSum with (nolock) ON dbo.tblSakas1.PosProcessID = dbo.tblProcessSum.IDPosProcess 
+where dbo.tblSakas1.AllowOverflow = 0
+GROUP BY dbo.tblProcessSum.IDRes ) as qMnl ON dbo.tblReserv.IDRes = qMnl.IDRes
+left outer join
+(select MIN(PlanDate) as PlandateAvt,dbo.tblProcessSum.IDRes 
+FROM dbo.tblSakas1 with (nolock)
+inner join dbo.tblProcessSum with (nolock) ON dbo.tblSakas1.PosProcessID = dbo.tblProcessSum.IDPosProcess 
+where dbo.tblSakas1.AllowOverflow = 1
+GROUP BY dbo.tblProcessSum.IDRes ) as qAvt ON dbo.tblReserv.IDRes = qAvt.IDRes
+--
+--по письму Знака от 02.02.22
+left outer join
+(select dbo.tblPivotDetail.Prc,qCalc.IDRes  FROM
+(SELECT MAX(dbo.tblQueryKompl.ID) as MxCalc,dbo.tblProcessSum.IDRes FROM dbo.tblQueryKompl with (nolock)
+inner join dbo.tblProcessSum with (nolock) ON dbo.tblQueryKompl.IDz = dbo.tblProcessSum.NamePlaty 
+WHERE  dbo.tblQueryKompl.ReqPrc =1 
+and dbo.tblQueryKompl.SostMng = 1
+GROUP BY dbo.tblProcessSum.IDRes) qCalc
+inner join dbo.tblPivotDetail with (nolock) ON qCalc.MxCalc = dbo.tblPivotDetail.IDQueryKompl and dbo.tblPivotDetail.SkladID = @txtID ) as qCalcPrice ON dbo.tblProcessSum.IDRes = qCalcPrice.IDRes 
+
+WHERE     (dbo.tblReservirSub.Activ <> 0) AND (dbo.tblReserv.Riba = 0) AND (dbo.tblReservirSub.SkladID = @txtID)
+
+) as q1
+--по ТЗ 479 Маслюкова (14.01.22)
+--уточнение по письму Маслюкова от 24.01.22
+ORDER BY case when IDRes = 8579 THEN 0 ELSe 1 END,IsGuilty DESC,isnull(DtaPost,'20991231') DESC,Дата DESC
+end
+else begin
+SELECT IDRes,Дата,[Название темы],Firma, [Ответственный],Prim,IsExactDate,DtaPost,Изделия,Резерв, AllKol,'' as IsGuilty,[Isp],
+OtvIng,FZ275,IDProcess,NumZakas,
+case when RaznDays< 1 THEN '' ELSE cast(RaznDays / 7 as varchar(10)) + 'н.' + case when RaznDays-7*(RaznDays / 7)>0 THEN cast(RaznDays-7*(RaznDays / 7) as varchar(10)) + 'д.' ELSE '' END END as Razn,
+'' as ToxicLvl,'' as INN,'' as ApplyArea,
+case when Trg = 0 Then '-' else cast(case when Ddif < 4 Then cast(round(Trg*1.0300,4) as decimal(12,4)) else cast(round(Trg*1.0500,4) as decimal(12,4)) end  as varchar(10)) end as MaxPrc,
+case when Trg = 0 Then '-' else cast( cast(Trg as decimal(12,4)) as varchar(10)) end as Trg,Colr,
+PlandateCmplx,'-' as CalcPrc
+FROM
+(SELECT     dbo.tblReserv.IDRes,dbo.tblReserv.Дата, dbo.tblReserv.[Название темы], dbo.tblFirmaShort.Firma, dbo.tblIspolnit01.FirstName as [Ответственный], dbo.tblReserv.Примечание as Prim, dbo.tblReserv.IsExactDate, 
+                      case when dbo.tblReservirSub.Avt = 0 THEN dbo.tblReserv.DtaPost ELSE dbo.tblReserv.DtaPostAvt END as DtaPost,dbo.tblReserv.Изделия,dbo.tblReservirSub.Резерв,dbo.tblReserv.Изделия*dbo.tblReservirSub.Резерв as AllKol,
+[Name] as [Isp],dbo.GetOtv4QueryKomplSQL(dbo.tblReserv.IDRes) as OtvIng,
+round(isnull(dbo.tblReservirsub.Trg ,0),4) as Trg,isnull(dbo.tblReservirsub.Colr,0) as Colr,ISNULL(dbo.tblReservirsub.Ddif,0) as Ddif,
+CASE WHEN dbo.tblReserv.FZ275ID >0 THEN 1 ELSE 0 END as FZ275,dbo.tblProcessSum.IDProcess ,dbo.tblProcess.NameProcess as NumZakas,DATEDIFF(d,cast(convert(char(8),GetDate(),112) + ' 00:00:00' as datetime),cast(convert(char(8),case when dbo.tblReservirSub.Avt = 0 THEN dbo.tblReserv.DtaPost ELSE dbo.tblReserv.DtaPostAvt END,112) + ' 00:00:00' as datetime)) as RaznDays,
+dbo.tblReserv.Sort,
+--по ТЗ 479 Маслюкова (14.01.22)
+case when dbo.tblReservirSub.Avt = 0 THEN qMnl.PlandateMnl ELSE isnull(qAvt.PlandateAvt,qMnl.PlandateMnl) END as PlandateCmplx
+FROM         dbo.tblReserv WITH (NOLOCK) INNER JOIN
+                      dbo.tblReservirSub WITH (NOLOCK) ON dbo.tblReserv.IDRes = dbo.tblReservirSub.ResID INNER JOIN
+                      dbo.tblFirmaShort WITH (NOLOCK) ON dbo.tblReserv.Zac = dbo.tblFirmaShort.UchetID
+LEFT OUTER JOIN dbo.tblIsp2 WITH (NOLOCK) ON dbo.tblReserv.WhatFirm =dbo.tblIsp2.IspID 
+LEFT OUTER JOIN dbo.tblIspolnit01 WITH (NOLOCK) ON dbo.tblReserv.[Owner] = dbo.tblIspolnit01.IspolnitID 
+LEFT OUTER JOIN dbo.tblProcessSum WITH (NOLOCK) ON dbo.tblReserv.IDRes = dbo.tblProcessSum.IDRes 
+LEFT OUTER JOIN dbo.tblProcess WITH (NOLOCK) ON dbo.tblProcessSum.IDProcess = dbo.tblProcess.ProcessID 
+--по ТЗ 412 Ивановой (26.02.21)
+left outer join
+(select MIN(PlanDate) as PlandateMnl,dbo.tblProcessSum.IDRes 
+FROM dbo.tblSakas1 with (nolock)
+inner join dbo.tblProcessSum with (nolock) ON dbo.tblSakas1.PosProcessID = dbo.tblProcessSum.IDPosProcess 
+where dbo.tblSakas1.AllowOverflow = 0
+GROUP BY dbo.tblProcessSum.IDRes ) as qMnl ON dbo.tblReserv.IDRes = qMnl.IDRes
+left outer join
+(select MIN(PlanDate) as PlandateAvt,dbo.tblProcessSum.IDRes 
+FROM dbo.tblSakas1 with (nolock)
+inner join dbo.tblProcessSum with (nolock) ON dbo.tblSakas1.PosProcessID = dbo.tblProcessSum.IDPosProcess 
+where dbo.tblSakas1.AllowOverflow = 1
+GROUP BY dbo.tblProcessSum.IDRes ) as qAvt ON dbo.tblReserv.IDRes = qAvt.IDRes
+--
+WHERE     (dbo.tblReservirSub.Activ <> 0) AND (dbo.tblReserv.Riba = 0) AND (dbo.tblReservirSub.SkladID = @txtID)
+) as q1
+--по ТЗ 479 Маслюкова (14.01.22)
+--уточнение по письму Маслюкова от 24.01.22
+ORDER BY case when IDRes = 8579 THEN 0 ELSe 1 END,IsGuilty DESC,isnull(DtaPost,'20991231') DESC,Дата DESC
+end
+END
+
+USE [TrxSQL]
+GO
+/****** Объект:  StoredProcedure [dbo].[xp_SkladTrackingZakLst]    Дата создания скрипта: 27.11.2026 13:06:33 ******/ 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+ALTER PROCEDURE [dbo].[xp_SkladTrackingZakLst] 
+(@SkladID int=0)
+AS
+BEGIN
+SET NOCOUNT ON;
+SELECT case when dbo.SubtblProcess4Tracking.IDProcess>0 then 'да' ELSE 'нет' end as [Ознакомлен],
+qSel.NameProcess as [Заказ],qSel.[Ближ.старт],Kol as [Кол.изд],dbo.tblZadan.NameFile as [Название]
+FROM
+(select  
+dbo.tblProcess.NameProcess,convert(char(10),min(dbo.tblGraficRabot.BegPlan),104) as [Ближ.старт]
+,MAX(dbo.tblPosProcess.KolvoToZavod) as Kol,
+dbo.tblProcess.ProcessID,dbo.subtblRecomMat.IDz
+from dbo.subtblRecomMat with (nolock)
+inner join dbo.tblPosProcess with (nolock) ON dbo.subtblRecomMat.IDz = dbo.tblPosProcess.NamePlaty
+inner join dbo.tblProcess with (nolock) ON dbo.tblProcess.ProcessID = dbo.tblPosProcess.IDProcess
+inner join dbo.tblSakas1 with (nolock) ON dbo.tblPosProcess.ID = dbo.tblSakas1.PosProcessID
+inner join dbo.tblArb with (nolock) ON dbo.tblSakas1.SakasID = dbo.tblArb.IDSakas1
+inner join dbo.tblGraficRabot with (nolock) ON dbo.tblArb.IDArb = dbo.tblGraficRabot.WhatWork
+WHERE dbo.tblSakas1.SostSak < 4 and dbo.tblGraficRabot.BegPlan > 0
+and dbo.subtblRecomMat.SkladID = @SkladID
+GROUP BY dbo.tblProcess.NameProcess,dbo.tblProcess.ProcessID,dbo.subtblRecomMat.IDz) as qSel
+inner join dbo.tblZadan with (nolock) ON qSel.IDz = dbo.tblZadan.IDZadan
+left outer join dbo.SubtblProcess4Tracking with (nolock) ON qSel.ProcessID =dbo.SubtblProcess4Tracking.IDProcess
+order by [Ближ.старт]
+END
+
+
+USE [TrxSQL]
+GO
+/****** Объект:  StoredProcedure [dbo].[xp_GetInvoices1]    Дата создания скрипта: 27.11.2026 13:06:58 ******/ 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	список предложений от поставщиков по элементу
+-- =============================================
+ALTER PROCEDURE [dbo].[xp_GetInvoices1]		
+(@SkladID int=0,@Numtbl int=0,@IDRes int=0,@Tpe int = 0,@DtaTxt varchar(16)='')
+AS
+BEGIN
+SET NOCOUNT ON;
+
+update dbo.tblInvoice set PrcRub = dbo.Txt2HourSQL(isnull([hrs],'0:0'))
+*dbo.tblSprGroupWrks.NlgKfs/100.00*dbo.tblSprGroupWrks.SmPerHour,Prc = dbo.Txt2HourSQL(isnull([hrs],'0:0'))
+*dbo.tblSprGroupWrks.NlgKfs/100.00*dbo.tblSprGroupWrks.SmPerHour/dbo.GetKursSQL(convert(varchar(8),dbo.tblInvoice.DT,112),840)
+from dbo.tblInvoice 
+inner join  dbo.tblSubTypeArb with (nolock) On dbo.tblSubTypeArb.TypeArb = dbo.tblInvoice.suboper
+inner join dbo.tblSprGroupWrks  with (nolock) On dbo.tblSprGroupWrks.NumWork = dbo.tblSubTypeArb.NumTypeArb
+where oper = 'Вид обработки' and skladid = @SkladID
+
+
+if @SkladID >0 begin
+	if @IDRes= 0 begin
+		if @Numtbl>=0 begin
+			DECLARE @BDta datetime
+			DECLARE @EDta datetime
+			if @DtaTxt = '' begin
+				SELECT @BDta = min(DtaAdv),@EDta = max(DtaAdv) FROM dbo.tblInvoice with (nolock) WHERE SkladID = @SkladID
+			end
+			else begin	
+				SET @BDta = cast(left(@DTaTxt,8) as datetime)
+				SET @EDta = cast(right(@DTaTxt,8) + ' 23:59:59' as datetime)
+			end
+			--dbo.tblFirma.Firma по ТЗ 587 Знака (19.09.23)
+			SELECT dbo.tblFirma.Firma as Post,DtaAdv,dbo.tblInvoice.Srok,Prc,dbo.tblInvoice.Prim,ID,Kolvo,dbo.tblInvoice.UserCur,dbo.tblInvoice.DT,
+			case when dbo.tblInvoice.oper = 'Вид обработки' Then dbo.tblSprGroupWrks.NlgKfs/100*dbo.tblSprGroupWrks.SmPerHour else 1 end as hrsprc,
+PrcRub,dbo.tblInvoice.email,PrcE,Analog,AnalogActive,
+			CASE WHEN NumPivot>0 THEN 1 ELSE 0 END as InPivot,
+			Numtbl,CASE WHEN Numtbl = @Numtbl AND @NumTbl>0 THEN 1 ELSE 0 END as IsCurTbl,
+			MntAnalog,ProjectPrice,NmeCat,CodeCat,
+			
+			PrcWONDS,dbo.tblInvoice.SkladID ,dbo.tblInvoice.UchetID,
+			dbo.RateMeSQL(dbo.tblInvoice.UchetID) as RateTxt,
+			dbo.ExistCatSQL(dbo.tblFirma.Firma) as ExistCat,
+			dbo.tblInvoiceAgreedSpr.txt as SostAgreed,MOQ,MPQ,DC,PrcEWONDS,PriceUWONDS,
+			isnull(Prc,0) * Kolvo as TotalUSD,PrcRub * Kolvo as TotalRUR,PostID,
+			ISNULL(qSch.NSch,'') as NSchByInvoice,
+			--по заданию Реннике от 03.08.21
+			CASE WHEN dbo.tblInvoice.Prc = 0 THEN 0 ELSE floor(50 / dbo.tblInvoice.Prc) + Kolvo end as MaxKol,
+			dbo.tblInvoice.IsAgreed,
+			--ТЗ 592 Маслюкова (12.09.23)
+			dbo.tblInvoice.PrcY,
+			--ТЗ 592 Маслюкова (02.02.24)
+			dbo.tblSklad.ЦенаОптовая as PrcOpt,
+			--ТЗ 348 итерация 2 Маслюкова (24.09.24)
+			dbo.tblInvoice.PrcWOKfs, dbo.tblInvoice.PrcSrc,
+			--ТЗ 348 итерация 4 (11.02.26)
+			dbo.tblInvoice.Manuf,dbo.tblInvoice.oper,dbo.tblInvoice.suboper,dbo.tblInvoice.hrs,dbo.tblInvoice.absid,
+				case when dbo.tblInvoice.oper = 'Вид обработки' Then dbo.Txt2HourSQL([hrs])
+*dbo.tblSprGroupWrks.NlgKfs/100*dbo.tblSprGroupWrks.SmPerHour else 1 end as hrsprc,
+			--письмо Знака от 28.09.26
+			dbo.tblSprVl.Nme as TypeVl,
+			--заявка Знака от 12.10.26
+			dbo.tblInvoice.SrcLT
+			FROM dbo.tblInvoice WITH (NOLOCK)
+			inner join dbo.tblSklad with (nolock) ON dbo.tblInvoice.SkladID = dbo.tblSklad.Код
+			inner join dbo.tblFirma with (nolock) ON dbo.tblInvoice.UchetID = dbo.tblFirma.UchetID 
+			inner join dbo.tblInvoiceAgreedSpr with (nolock) ON dbo.tblInvoice.IsAgreed = dbo.tblInvoiceAgreedSpr.WhatDiv and dbo.tblInvoiceAgreedSpr.Tip = 1
+			left outer join
+			(select dbo.tblSchEl.IDInvoice,dbo.tblPredShceta.НомерСчета + ' от ' + CONVERT(char(8),dbo.tblPredShceta.ДатаСчета ,4) as NSch  from dbo.tblSchEl with (nolock)
+			inner join dbo.tblPredShceta with (nolock) ON dbo.tblSchEl.ShcID = dbo.tblPredShceta.PredShcID 
+			WHERE dbo.tblSchEl.IDInvoice >0) as qSch ON dbo.tblInvoice.ID = qSch.IDInvoice 
+			left outer join dbo.tblSubTypeArb with (nolock) On dbo.tblSubTypeArb.TypeArb = dbo.tblInvoice.suboper  and IsShown = 1
+			left outer join  dbo.tblSprGroupWrks  with (nolock) On dbo.tblSprGroupWrks.NumWork = dbo.tblSubTypeArb.NumTypeArb
+			left outer join dbo.tblSprVl with (nolock) ON dbo.tblInvoice.NmeVl = dbo.tblSprVl.ByBank
+			WHERE SkladID = @SkladID and Tpe = @Tpe
+			and dbo.tblInvoice.DtaAdv between @BDta and @EDta 
+			ORDER BY CASE WHEN ProjectPrice>0 THEN 0 ELSE 1 END, CASE WHEN Numtbl = @Numtbl AND @NumTbl>0 THEN 1 ELSE 0 END DESC,DtaAdv DESC
+			RETURN
+		end
+		else begin
+			--dbo.tblFirma.Firma по ТЗ 587 Знака (19.09.23)
+			SELECT TOP 10 dbo.tblFirma.Firma as Post,DtaAdv,dbo.tblInvoice.Srok,Prc,dbo.tblInvoice.Prim,ID,Kolvo,UserCur,DT,PrcRub,dbo.tblInvoice.email,PrcE,Analog,AnalogActive,
+			CASE WHEN NumPivot>0 THEN 1 ELSE 0 END as InPivot,
+			Numtbl,CASE WHEN Numtbl = @Numtbl AND @NumTbl>0 THEN 1 ELSE 0 END as IsCurTbl,
+			MntAnalog,ProjectPrice,NmeCat,CodeCat,PrcWONDS,dbo.tblInvoice.SkladID,dbo.tblInvoice.UchetID,
+			dbo.RateMeSQL(dbo.tblInvoice.UchetID) as RateTxt,dbo.ExistCatSQL(dbo.tblFirma.Firma) as ExistCat,
+			dbo.tblInvoiceAgreedSpr.txt as SostAgreed,MOQ,MPQ,DC,PrcEWONDS,PriceUWONDS,isnull(Prc,0) * Kolvo as TotalUSD,isnull(PrcRub,0) * Kolvo as TotalRUR,PostID,
+			--по заданию Реннике от 03.08.21
+			CASE WHEN dbo.tblInvoice.Prc = 0 THEN 0 ELSE floor(50 / Prc) + Kolvo end as MaxKol,
+			dbo.tblInvoice.IsAgreed,
+			--ТЗ 592 Маслюкова (12.09.23)
+			dbo.tblInvoice.PrcY,
+			Null as PrcOpt,
+			--ТЗ 348 итерация 2 Маслюкова (24.09.24)
+			dbo.tblInvoice.PrcWOKfs, dbo.tblInvoice.PrcSrc,
+			--ТЗ 348 итерация 4 (11.02.26)
+			dbo.tblInvoice.Manuf,dbo.tblInvoice.oper,dbo.tblInvoice.suboper,dbo.tblInvoice.hrs,dbo.tblInvoice.absid,	case when dbo.tblInvoice.oper = 'Вид обработки' Then dbo.tblSprGroupWrks.NlgKfs/100*dbo.tblSprGroupWrks.SmPerHour else 1 end as hrsprc,
+			--письмо Знака от 28.09.26
+			dbo.tblSprVl.Nme as TypeVl,
+			--заявка Знака от 12.10.26
+			dbo.tblInvoice.SrcLT
+			FROM dbo.tblInvoice WITH (NOLOCK)
+			inner join dbo.tblFirma with (nolock) ON dbo.tblInvoice.UchetID = dbo.tblFirma.UchetID
+			inner join dbo.tblInvoiceAgreedSpr with (nolock) ON dbo.tblInvoice.IsAgreed = dbo.tblInvoiceAgreedSpr.WhatDiv and dbo.tblInvoiceAgreedSpr.Tip = 1
+						left outer join dbo.tblSubTypeArb with (nolock) On dbo.tblSubTypeArb.TypeArb = dbo.tblInvoice.suboper  and IsShown = 1
+			left outer join  dbo.tblSprGroupWrks  with (nolock) On dbo.tblSprGroupWrks.NumWork = dbo.tblSubTypeArb.NumTypeArb
+			left outer join dbo.tblSprVl with (nolock) ON dbo.tblInvoice.NmeVl = dbo.tblSprVl.ByBank
+			WHERE SkladID = @SkladID and Tpe = @Tpe
+			ORDER BY CASE WHEN ProjectPrice>0 THEN 0 ELSE 1 END,DtaAdv DESC
+			RETURN
+		end
+	end
+	else begin
+		if @IDRes > 0 begin
+			SELECT dbo.tblFirma.Firma as Post,DtaAdv,dbo.tblInvoice.Srok,dbo.tblInvoice.Prc,dbo.tblInvoice.Prim,ID,Kolvo,UserCur,DT,PrcRub,dbo.tblInvoice.email,PrcE,Analog,AnalogActive,
+			CASE WHEN NumPivot>0 THEN 1 ELSE 0 END as InPivot,
+			dbo.tblInvoice.Numtbl,CASE WHEN dbo.tblInvoice.Numtbl = @Numtbl AND @NumTbl>0 THEN 1 ELSE 0 END as IsCurTbl,
+			MntAnalog ,ProjectPrice,NmeCat,CodeCat,PrcWONDS,dbo.tblInvoice.SkladID,dbo.tblInvoice.UchetID,
+			dbo.RateMeSQL(dbo.tblInvoice.UchetID) as RateTxt,dbo.ExistCatSQL(dbo.tblFirma.Firma) as ExistCat,
+			dbo.tblInvoiceAgreedSpr.txt as SostAgreed,MOQ,MPQ,DC,PrcEWONDS,PriceUWONDS,isnull(PrcRub  ,0) * Kolvo as TotalRUR,PostID,
+			ISNULL(qSch.NSch,'') as NSchByInvoice,
+			--по заданию Реннике от 03.08.21
+			CASE WHEN dbo.tblInvoice.Prc = 0 THEN 0 ELSE floor(50 / dbo.tblInvoice.Prc) + Kolvo end as MaxKol,
+			dbo.tblInvoice.IsAgreed,
+			--ТЗ 592 Маслюкова (12.09.23)
+			dbo.tblInvoice.PrcY,
+			Null as PrcOpt,
+			--ТЗ 348 итерация 2 Маслюкова (24.09.24)
+			dbo.tblInvoice.PrcWOKfs, dbo.tblInvoice.PrcSrc,
+			--ТЗ 348 итерация 4 (11.02.26)
+			dbo.tblInvoice.Manuf,dbo.tblInvoice.oper,dbo.tblInvoice.suboper,dbo.tblInvoice.hrs,dbo.tblInvoice.absid,
+				case when dbo.tblInvoice.oper = 'Вид обработки' Then dbo.Txt2HourSQL([hrs])
+*dbo.tblSprGroupWrks.NlgKfs/100*dbo.tblSprGroupWrks.SmPerHour else 1 end as hrsprc,
+			--письмо Знака от 28.09.26
+			dbo.tblSprVl.Nme as TypeVl,
+			--заявка Знака от 12.10.26
+			dbo.tblInvoice.SrcLT
+			FROM dbo.tblInvoice WITH (NOLOCK)
+			inner join dbo.tblFirma with (nolock) ON dbo.tblInvoice.UchetID = dbo.tblFirma.UchetID
+			INNER JOIN dbo.tblPivotDetail WITH (NOLOCK) ON dbo.tblInvoice.ID = dbo.tblPivotDetail.IDInv
+			inner join dbo.tblInvoiceAgreedSpr with (nolock) ON dbo.tblInvoice.IsAgreed = dbo.tblInvoiceAgreedSpr.WhatDiv and dbo.tblInvoiceAgreedSpr.Tip = 1
+			left outer join
+			(select dbo.tblSchEl.IDInvoice,dbo.tblPredShceta.НомерСчета + ' от ' + CONVERT(char(8),dbo.tblPredShceta.ДатаСчета ,4) as NSch  from dbo.tblSchEl with (nolock)
+			inner join dbo.tblPredShceta with (nolock) ON dbo.tblSchEl.ShcID = dbo.tblPredShceta.PredShcID 
+			WHERE dbo.tblSchEl.IDInvoice >0) as qSch ON dbo.tblInvoice.ID = qSch.IDInvoice
+									left outer join dbo.tblSubTypeArb with (nolock) On dbo.tblSubTypeArb.TypeArb = dbo.tblInvoice.suboper
+			left outer join  dbo.tblSprGroupWrks  with (nolock) On dbo.tblSprGroupWrks.NumWork = dbo.tblSubTypeArb.NumTypeArb
+			left outer join dbo.tblSprVl with (nolock) ON dbo.tblInvoice.NmeVl = dbo.tblSprVl.ByBank
+			WHERE dbo.tblInvoice.SkladID = @SkladID and Tpe = @Tpe
+			AND dbo.tblPivotDetail.Numtbl = @Numtbl AND dbo.tblPivotDetail.IDRes = @IDRes 
+			ORDER BY CASE WHEN ProjectPrice>0 THEN 0 ELSE 1 END,CASE WHEN dbo.tblInvoice.Numtbl = @Numtbl AND @NumTbl>0 THEN 1 ELSE 0 END DESC,DtaAdv DESC
+			RETURN
+		end
+		if @IDRes =-1 begin
+			SELECT dbo.tblFirma.Firma as Post,DtaAdv,dbo.tblInvoice.Srok,Prc,dbo.tblInvoice.Prim,ID,Kolvo,UserCur,DT,PrcRub,dbo.tblInvoice.email,PrcE,Analog,AnalogActive,
+			CASE WHEN NumPivot>0 THEN 1 ELSE 0 END as InPivot,
+			Numtbl,CASE WHEN Numtbl = @Numtbl AND @NumTbl>0 THEN 1 ELSE 0 END as IsCurTbl,
+			MntAnalog,ProjectPrice,NmeCat,CodeCat,PrcWONDS,SkladID,dbo.tblInvoice.UchetID,
+			dbo.RateMeSQL(dbo.tblInvoice.UchetID) as RateTxt,dbo.ExistCatSQL(dbo.tblFirma.Firma) as ExistCat,
+			dbo.tblInvoiceAgreedSpr.txt as SostAgreed,MOQ,MPQ,DC,PrcEWONDS,PriceUWONDS,isnull(Prc,0) * Kolvo as TotalUSD,isnull(PrcRub,0) * Kolvo as TotalRUR,PostID,
+			ISNULL(qSch.NSch,'') as NSchByInvoice,
+			--по заданию Реннике от 03.08.21
+			CASE WHEN dbo.tblInvoice.Prc = 0 THEN 0 ELSE floor(50 / dbo.tblInvoice.Prc) + Kolvo end as MaxKol,
+			dbo.tblInvoice.IsAgreed,
+			--ТЗ 592 Маслюкова (12.09.23)
+			dbo.tblInvoice.PrcY,
+			Null as PrcOpt,
+			--ТЗ 348 итерация 2 Маслюкова (24.09.24)
+			dbo.tblInvoice.PrcWOKfs, dbo.tblInvoice.PrcSrc,
+			--ТЗ 348 итерация 4 (11.02.26)
+			dbo.tblInvoice.Manuf,dbo.tblInvoice.oper,dbo.tblInvoice.suboper,dbo.tblInvoice.hrs,dbo.tblInvoice.absid,	case when dbo.tblInvoice.oper = 'Вид обработки' Then dbo.tblSprGroupWrks.NlgKfs/100*dbo.tblSprGroupWrks.SmPerHour else 1 end as hrsprc,
+			--письмо Знака от 28.09.26
+			dbo.tblSprVl.Nme as TypeVl,
+			--заявка Знака от 12.10.26
+			dbo.tblInvoice.SrcLT
+			FROM dbo.tblInvoice WITH (NOLOCK)
+			inner join dbo.tblFirma with (nolock) ON dbo.tblInvoice.UchetID = dbo.tblFirma.UchetID
+			inner join dbo.tblInvoiceAgreedSpr with (nolock) ON dbo.tblInvoice.IsAgreed = dbo.tblInvoiceAgreedSpr.WhatDiv and dbo.tblInvoiceAgreedSpr.Tip = 1
+			left outer join
+			(select dbo.tblSchEl.IDInvoice,dbo.tblPredShceta.НомерСчета + ' от ' + CONVERT(char(8),dbo.tblPredShceta.ДатаСчета ,4) as NSch  from dbo.tblSchEl with (nolock)
+			inner join dbo.tblPredShceta with (nolock) ON dbo.tblSchEl.ShcID = dbo.tblPredShceta.PredShcID 
+			WHERE dbo.tblSchEl.IDInvoice >0) as qSch ON dbo.tblInvoice.ID = qSch.IDInvoice
+												left outer join dbo.tblSubTypeArb with (nolock) On dbo.tblSubTypeArb.TypeArb = dbo.tblInvoice.suboper
+			left outer join  dbo.tblSprGroupWrks  with (nolock) On dbo.tblSprGroupWrks.NumWork = dbo.tblSubTypeArb.NumTypeArb
+			left outer join dbo.tblSprVl with (nolock) ON dbo.tblInvoice.NmeVl = dbo.tblSprVl.ByBank
+			WHERE SkladID = @SkladID AND Numtbl = @Numtbl and Tpe = @Tpe
+			ORDER BY CASE WHEN ProjectPrice>0 THEN 0 ELSE 1 END, CASE WHEN Numtbl = @Numtbl AND @NumTbl>0 THEN 1 ELSE 0 END DESC,DtaAdv DESC
+			RETURN
+		end
+	end
+end
+if @SkladID <0 begin
+	Declare @CopyNum int
+	SET @CopyNum =-1
+	DECLARE @TmpEl TABLE (SkladID int PRIMARY KEY)
+	DECLARE @Naim nvarchar(500)
+	SET @Naim = ''
+	SELECT @CopyNum = CopyNum FROM dbo.tblPivotMainLog WHERE Num = @Numtbl 
+	SELECT @Naim = Naim FROM dbo.tblPivotDetail WITH (NOLOCK) WHERE Numtbl = @Numtbl 
+	AND SkladID = @SkladID 
+	
+	DECLARE @TmpCopy TABLE (id int identity,NumCopy int PRIMARY KEY)
+	INSERT INTO @TmpCopy (NumCopy ) Values (@Numtbl)
+	If @CopyNum > 0 Begin
+	While @CopyNum>0 begin
+	INSERT INTO @TmpCopy (NumCopy ) Values (@CopyNum)
+	Set @CopyNum=0
+	SELECT @CopyNum = isnull(CopyNum,0) FROM dbo.tblPivotMainLog WHERE Num = (SELECT TOP 1 NumCopy From @TmpCopy Order BY Id desc)
+	end
+	End
+	if @Naim <> '' begin
+		INSERT INTO @TmpEl (SkladID )
+		SELECT SkladID FROM dbo.tblPivotDetail WITH (NOLOCK)
+		WHERE SkladID <0 AND Naim = @Naim
+		AND Numtbl in (SELECT NumCopy  FROM @TmpCopy)
+		GROUP BY SkladID
+	end
+	else begin
+		INSERT INTO @TmpEl (SkladID )
+		VALUES (@SkladID )
+	end
+	if @IDRes= 0 begin
+		SELECT dbo.tblFirma.Firma as Post,DtaAdv,dbo.tblInvoice.Srok,dbo.tblInvoice.Prc,dbo.tblInvoice.Prim,dbo.tblInvoice.ID,Kolvo,UserCur,DT,PrcRub,dbo.tblInvoice.email,PrcE,Analog,AnalogActive,
+		CASE WHEN NumPivot>0 THEN 1 ELSE 0 END as InPivot,dbo.tblInvoice.Numtbl,CASE WHEN dbo.tblInvoice.Numtbl = @Numtbl AND @NumTbl>0 THEN 1 ELSE 0 END as IsCurTbl,
+		MntAnalog,ProjectPrice,NmeCat,CodeCat,PrcWONDS,dbo.tblInvoice.SkladID,dbo.tblInvoice.UchetID,
+		dbo.RateMeSQL(dbo.tblInvoice.UchetID) as RateTxt,dbo.ExistCatSQL(dbo.tblFirma.Firma) as ExistCat,
+		dbo.tblInvoiceAgreedSpr.txt as SostAgreed,MOQ,MPQ,DC,PrcEWONDS,PriceUWONDS,isnull(Prc,0) * Kolvo as TotalUSD,isnull( PrcRub ,0) * Kolvo as TotalRUR,PostID,
+		ISNULL(qSch.NSch,'') as NSchByInvoice,
+		--по заданию Реннике от 03.08.21
+		CASE WHEN dbo.tblInvoice.Prc = 0 THEN 0 ELSE floor(50 / dbo.tblInvoice.Prc) + Kolvo end as MaxKol,
+		dbo.tblInvoice.IsAgreed,
+		--ТЗ 592 Маслюкова (12.09.23)
+		dbo.tblInvoice.PrcY,
+		Null as PrcOpt,
+		--ТЗ 348 итерация 2 Маслюкова (24.09.24)
+		dbo.tblInvoice.PrcWOKfs, dbo.tblInvoice.PrcSrc,
+		--ТЗ 348 итерация 4 (11.02.26)
+		dbo.tblInvoice.Manuf,dbo.tblInvoice.oper,dbo.tblInvoice.suboper,dbo.tblInvoice.hrs,dbo.tblInvoice.absid,	case when dbo.tblInvoice.oper = 'Вид обработки' Then 
+dbo.tblSprGroupWrks.NlgKfs/100*dbo.tblSprGroupWrks.SmPerHour else 1 end as hrsprc,
+		--письмо Знака от 28.09.26
+		dbo.tblSprVl.Nme as TypeVl,
+		--заявка Знака от 12.10.26
+		dbo.tblInvoice.SrcLT
+		FROM dbo.tblInvoice WITH (NOLOCK)
+		inner join dbo.tblFirma with (nolock) ON dbo.tblInvoice.UchetID = dbo.tblFirma.UchetID
+		--INNER JOIN dbo.tblPivotDetail WITH (NOLOCK) ON dbo.tblInvoice.ID = dbo.tblPivotDetail.IDInv
+		inner join dbo.tblInvoiceAgreedSpr with (nolock) ON dbo.tblInvoice.IsAgreed = dbo.tblInvoiceAgreedSpr.WhatDiv and dbo.tblInvoiceAgreedSpr.Tip = 1
+		INNER JOIN 
+		(SELECT Naim, dbo.tblPivotDetail.SkladID,Numtbl FROM dbo.tblPivotDetail WITH (NOLOCK)
+		INNER JOIN @TmpEl as q1 ON dbo.tblPivotDetail.SkladID = q1.SkladID
+		inner join @TmpCopy as q2 On q2.NumCopy = dbo.tblPivotDetail.Numtbl
+		group by Naim, dbo.tblPivotDetail.SkladID,Numtbl
+		) as qryNaim
+		ON dbo.tblInvoice.SkladID = qryNaim.SkladID AND dbo.tblInvoice.Numtbl  = qryNaim.Numtbl 
+		INNER JOIN @TmpEl as q ON dbo.tblInvoice.SkladID = q.SkladID 
+		inner join @TmpCopy as q2 On q2.NumCopy = dbo.tblInvoice.Numtbl
+		AND qryNaim.Naim = @Naim 
+		left outer join
+		(select dbo.tblSchEl.IDInvoice,dbo.tblPredShceta.НомерСчета + ' от ' + CONVERT(char(8),dbo.tblPredShceta.ДатаСчета ,4) as NSch  from dbo.tblSchEl with (nolock)
+		inner join dbo.tblPredShceta with (nolock) ON dbo.tblSchEl.ShcID = dbo.tblPredShceta.PredShcID 
+		WHERE dbo.tblSchEl.IDInvoice >0) as qSch ON dbo.tblInvoice.ID = qSch.IDInvoice
+														left outer join dbo.tblSubTypeArb with (nolock) On dbo.tblSubTypeArb.TypeArb = dbo.tblInvoice.suboper
+			left outer join  dbo.tblSprGroupWrks  with (nolock) On dbo.tblSprGroupWrks.NumWork = dbo.tblSubTypeArb.NumTypeArb
+			left outer join dbo.tblSprVl with (nolock) ON dbo.tblInvoice.NmeVl = dbo.tblSprVl.ByBank
+		where Tpe = @Tpe
+		ORDER BY CASE WHEN ProjectPrice>0 THEN 0 ELSE 1 END,CASE WHEN dbo.tblInvoice.Numtbl = @Numtbl AND @NumTbl>0 THEN 1 ELSE 0 END DESC, DtaAdv DESC
+		RETURN
+	end
+	else begin
+		SELECT dbo.tblFirma.Firma as Post,DtaAdv,dbo.tblInvoice.Srok,dbo.tblInvoice.Prc,dbo.tblInvoice.Prim,dbo.tblInvoice.ID,Kolvo,UserCur,DT,PrcRub,dbo.tblInvoice.email,PrcE,Analog,AnalogActive,
+		CASE WHEN NumPivot>0 THEN 1 ELSE 0 END as InPivot,dbo.tblInvoice.Numtbl,CASE WHEN dbo.tblInvoice.Numtbl = @Numtbl AND @NumTbl>0 THEN 1 ELSE 0 END as IsCurTbl,
+		MntAnalog,ProjectPrice,NmeCat,CodeCat,PrcWONDS,dbo.tblInvoice.SkladID,dbo.tblInvoice.UchetID,
+		dbo.RateMeSQL(dbo.tblInvoice.UchetID) as RateTxt,dbo.ExistCatSQL(dbo.tblFirma.Firma) as ExistCat,
+		dbo.tblInvoiceAgreedSpr.txt as SostAgreed,MOQ,MPQ,DC,PrcEWONDS,PriceUWONDS,isnull(dbo.tblInvoice.Prc,0) * Kolvo as TotalUSD,isnull(PrcRub,0) * Kolvo as TotalRUR,PostID,
+		ISNULL(qSch.NSch,'') as NSchByInvoice,
+		--по заданию Реннике от 03.08.21
+		CASE WHEN dbo.tblInvoice.Prc = 0 THEN 0 ELSE floor(50 / dbo.tblInvoice.Prc) + Kolvo end as MaxKol,
+		dbo.tblInvoice.IsAgreed,
+		--ТЗ 592 Маслюкова (12.09.23)
+		dbo.tblInvoice.PrcY,
+		Null as PrcOpt,
+		--ТЗ 348 итерация 2 Маслюкова (24.09.24)
+		dbo.tblInvoice.PrcWOKfs, dbo.tblInvoice.PrcSrc,
+		--ТЗ 348 итерация 4 (11.02.26)
+		dbo.tblInvoice.Manuf,dbo.tblInvoice.oper,dbo.tblInvoice.suboper,dbo.tblInvoice.hrs,dbo.tblInvoice.absid,	case when dbo.tblInvoice.oper = 'Вид обработки' Then 
+dbo.tblSprGroupWrks.NlgKfs/100*dbo.tblSprGroupWrks.SmPerHour else 1 end as hrsprc,
+		--письмо Знака от 28.09.26
+		dbo.tblSprVl.Nme as TypeVl,
+		--заявка Знака от 12.10.26
+		dbo.tblInvoice.SrcLT
+		FROM dbo.tblInvoice WITH (NOLOCK)
+		inner join dbo.tblFirma with (nolock) ON dbo.tblInvoice.UchetID = dbo.tblFirma.UchetID
+		INNER JOIN dbo.tblPivotDetail WITH (NOLOCK) ON dbo.tblInvoice.ID = dbo.tblPivotDetail.IDInv
+		inner join dbo.tblInvoiceAgreedSpr with (nolock) ON dbo.tblInvoice.IsAgreed = dbo.tblInvoiceAgreedSpr.WhatDiv and dbo.tblInvoiceAgreedSpr.Tip = 1
+		INNER JOIN @TmpEl as q ON dbo.tblInvoice.SkladID = q.SkladID 
+		inner join @TmpCopy as q2 On q2.NumCopy = dbo.tblInvoice.Numtbl
+		AND dbo.tblPivotDetail.Numtbl = @Numtbl AND dbo.tblPivotDetail.IDRes = @IDRes
+		left outer join
+		(select dbo.tblSchEl.IDInvoice,dbo.tblPredShceta.НомерСчета + ' от ' + CONVERT(char(8),dbo.tblPredShceta.ДатаСчета ,4) as NSch  from dbo.tblSchEl with (nolock)
+		inner join dbo.tblPredShceta with (nolock) ON dbo.tblSchEl.ShcID = dbo.tblPredShceta.PredShcID 
+		WHERE dbo.tblSchEl.IDInvoice >0) as qSch ON dbo.tblInvoice.ID = qSch.IDInvoice
+														left outer join dbo.tblSubTypeArb with (nolock) On dbo.tblSubTypeArb.TypeArb = dbo.tblInvoice.suboper
+			left outer join  dbo.tblSprGroupWrks  with (nolock) On dbo.tblSprGroupWrks.NumWork = dbo.tblSubTypeArb.NumTypeArb
+		left outer join dbo.tblSprVl with (nolock) ON dbo.tblInvoice.NmeVl = dbo.tblSprVl.ByBank
+				where Tpe = @Tpe
+		ORDER BY CASE WHEN ProjectPrice>0 THEN 0 ELSE 1 END,CASE WHEN dbo.tblInvoice.Numtbl = @Numtbl AND @NumTbl>0 THEN 1 ELSE 0 END DESC, DtaAdv DESC
+		RETURN
+	end
+end
+END
+
+
