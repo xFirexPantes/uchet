@@ -197,5 +197,33 @@
     }
 
     // Возврат из bfcache — страница осталась живой, окно не нужно
-    window.addEventListener('pageshow', () => { active = 0; hide(); });
+    window.addEventListener('pageshow', () => {
+        active = 0;
+        document.documentElement.classList.remove('vh-boot');
+        hide();
+    });
+
+    /**
+     * Режим «не показывать недорисованное»: страница со флагом data-boot="1" держит
+     * содержимое скрытым (html.vh-boot #main), пока раскладка не устоялась.
+     * Иначе браузер успевает показать контент в натуральную высоту и только потом
+     * применяет flex-раскладку — экран «прыгает».
+     *
+     * Снимаем заставку после load и двух кадров отрисовки; на всякий случай —
+     * не позже чем через 4 с (например, если картинка не загрузилась).
+     */
+    if (document.documentElement.dataset.boot === '1') {
+        const root = document.documentElement;
+        root.classList.add('vh-boot');
+        let done = false;
+        const reveal = () => {
+            if (done) return;
+            done = true;
+            root.classList.remove('vh-boot');
+            hide();
+        };
+        document.addEventListener('DOMContentLoaded', () => show());
+        window.addEventListener('load', () => requestAnimationFrame(() => requestAnimationFrame(reveal)));
+        setTimeout(reveal, 4000);
+    }
 })();
