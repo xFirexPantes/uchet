@@ -1314,10 +1314,15 @@ $this->registerJs(<<<'JS'
         busy = true;
         if (btn) btn.disabled = true;
         const top = scroll ? scroll.scrollTop : 0;
+        // Окно «система занята» держим сами на всё обновление: загрузка + разбор + отрисовка таблицы.
+        // Автоматический release у fetch снимал бы его сразу по заголовкам ответа, и пока браузер
+        // разбирал JSON и строил таблицу, экран выглядел пустым.
+        const hold = !silent && window.Busy;
+        if (hold) window.Busy.acquire();
         try {
-            // Фоновое обновление по таймеру не показывает окно «система занята»
+            // Фоновое обновление по таймеру окно не показывает
             const r = await fetch(cfg.rowsUrl + location.search,
-                { headers: { 'X-Requested-With': 'XMLHttpRequest' }, busy: silent ? false : undefined });
+                { headers: { 'X-Requested-With': 'XMLHttpRequest' }, busy: false });
             if (!r.ok) throw new Error('HTTP ' + r.status);
             const d = await r.json();
             body.innerHTML = d.html || '';
@@ -1345,6 +1350,8 @@ $this->registerJs(<<<'JS'
         } finally {
             busy = false;
             if (btn) btn.disabled = false;
+            // Снимаем окно только после того, как новая таблица уже нарисована (два кадра)
+            if (hold) requestAnimationFrame(() => requestAnimationFrame(() => window.Busy.release()));
         }
     }
 
@@ -1357,7 +1364,8 @@ $this->registerJs(<<<'JS'
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && Date.now() - last >= period) refresh(true);
     });
-    if (btn) btn.addEventListener('click', refresh);
+    // Обёртка нужна: иначе объект события попадёт в refresh как silent и окно не покажется
+    if (btn) btn.addEventListener('click', () => refresh(false));
 })();
 JS, \yii\web\View::POS_END);
 

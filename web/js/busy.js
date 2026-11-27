@@ -231,6 +231,17 @@
             paint(() => hide());
         };
 
+        // Окно — как только в документе появился <body>, не дожидаясь DOMContentLoaded:
+        // иначе между выгрузкой старой страницы и этим событием виден пустой экран.
+        const early = () => {
+            if (!document.body) return false;
+            window.Busy.show();
+            return true;
+        };
+        if (!early()) {
+            const mo = new MutationObserver(() => { if (early()) mo.disconnect(); });
+            mo.observe(root, { childList: true });
+        }
         document.addEventListener('DOMContentLoaded', () => window.Busy.show());
         window.addEventListener('load', () => paint(reveal));
         setTimeout(reveal, 4000);
