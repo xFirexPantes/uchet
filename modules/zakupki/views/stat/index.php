@@ -317,14 +317,17 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
         <section class="vh-panel">
             <div class="vh-panel-head">
                 <span>Список элементов</span>
-                <?php if ($filter->sort !== ''): ?>
-                    <span class="vh-tools">
+                <span class="vh-tools">
+                    <?php /* Легенда цветов — как кнопка «? Цвета» в списке счетов (vh-schet) */ ?>
+                    <button type="button" class="vh-btn vh-btn-xs" id="stHints"
+                            title="Что означают цвета в списке элементов">? Цвета</button>
+                    <?php if ($filter->sort !== ''): ?>
                         Сортировка: <?= Html::encode(StatService::label($filter->sort)) ?>
                         <?= $filter->dir === 'desc' ? '▼' : '▲' ?>
                         <a class="vh-btn vh-btn-xs" href="<?= Url::to($noSort) ?>"
                             title="Без сортировки (как в Access, когда все переключатели выключены)">✕</a>
-                    </span>
-                <?php endif ?>
+                    <?php endif ?>
+                </span>
             </div>
 
             <div class="vh-list-scroll">
