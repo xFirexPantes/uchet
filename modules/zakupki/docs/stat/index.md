@@ -2,7 +2,7 @@
 title: Статистика
 access_form: frmSt
 tz: []
-procs: [dbo.xp_GetVidSel, dbo.xp_frmStNewRS1_0, dbo.xp_frmStNewRS1_1, dbo.xp_frmStNewRS2_0, dbo.xp_frmStNewRS3_0, dbo.xp_frmStNewRS4_0, dbo.xp_frmStNewRS5_0, dbo.xp_frmStNewRS7_0, dbo.xp_frmStNewRS8, dbo.xp_frmStNewRS8_0, dbo.xp_frmStNewRS9_0, dbo.xp_frmStNewRSa_0, dbo.xp_frmStNewRSb, dbo.xp_frmStNewRSb_0, dbo.xp_frmStRS1Analog, dbo.xp_SubMinimumFilter, dbo.xp_GetWhatFirm, dbo.xp_GetSkladManagersNew, dbo.xp_SkladTrackingSprLst, dbo.xp_frmStLstFZ275, dbo.xp_GetKursByVal, dbo.xp_GetAdr, dbo.xp_SkladUpdPrim, dbo.xp_SkladTrackingUpdComm, dbo.xp_StatWorkWithProblemLstSost, dbo.xp_StatWorkWithProblemUpdSost]
+procs: [dbo.xp_GetVidSel, dbo.xp_frmStNewRS1_0, dbo.xp_frmStNewRS1_1, dbo.xp_frmStNewRS2_0, dbo.xp_frmStNewRS3_0, dbo.xp_frmStNewRS4_0, dbo.xp_frmStNewRS5_0, dbo.xp_frmStNewRS7_0, dbo.xp_frmStNewRS8, dbo.xp_frmStNewRS8_0, dbo.xp_frmStNewRS9_0, dbo.xp_frmStNewRSa_0, dbo.xp_frmStNewRSb, dbo.xp_frmStNewRSb_0, dbo.xp_frmStRS1Analog, dbo.xp_SubMinimumFilter, dbo.xp_SubFrmStatSch, dbo.xp_HistoryElem, dbo.xp_GetWhatFirm, dbo.xp_GetSkladManagersNew, dbo.xp_SkladTrackingSprLst, dbo.xp_SkladTrackingZakLst, dbo.xp_SkladTrackingUpdOzn, dbo.xp_frmStLstFZ275, dbo.xp_GetKursByVal, dbo.xp_GetAdr, dbo.xp_SkladUpdPrim, dbo.xp_SkladTrackingUpdComm, dbo.xp_StatWorkWithProblemLstSost, dbo.xp_StatWorkWithProblemUpdSost]
 perm: form:frmSt
 ---
 
@@ -138,6 +138,24 @@ perm: form:frmSt
 - Данные грузятся при выборе строки списка (`StatController::actionReserves`), как перезапрос
   подформы на `Form_Current`.
 
+## Счета элемента
+- Под резервами — подформа `s` (`SubFrmStatSch`): счета, по которым элемент ещё не получен полностью.
+- Источник: `exec dbo.xp_SubFrmStatSch @txtID, @Rgm`, где `@txtID` — «Код» выбранной строки, `@Rgm` — вид списка строкой. У процедуры два режима:
+  - вид `b` — `exec dbo.xp_HistoryElem @txtID, 2, 0, 0, ''`: история элемента (приход и оплаты, сроки, гарантия). Панель в этом виде называется «История элемента»;
+  - остальные виды — открытые позиции счетов (`Количество − пришло > 0`): № и дата счёта, организация (с категорией `NmeCat` в скобках), покупатель, количество, недополучено, срок поставки.
+- Дизайна подформы в выгрузке `Forms/` нет, поэтому колонки (`StatColumns::SCH_META` / `SCH_ORDER`) собраны из обращений `frmSt` к её полям (`fnRepaintFormStat`: `Me!s![Количество]`, `Me!s![Недополучено]`, `ProductDate`, `WarrantyDate`, `WarrantySrok`) и из текста процедуры. В виде `b` `fnRepaintFormStat` меняет источник колонок — «Количество» ← `Кол`, «Недополучено» ← `NedopolByNakl` — и показывает даты выпуска и гарантии (в остальных видах они скрыты). Подписи и ширины полей истории — как во вкладке «История» карточки элемента; ширины колонок счетов пока ориентировочные.
+- Скрыты служебные поля (`StatColumns::SCH_HIDDEN`): ключи (`PredShcID`, `AllID`), признаки (`Tip`, `OverrideProblem`, а вне вида `b` ещё `IsProblem` — там уже есть колонка `Probl`), данные самого элемента (`Код`, `Элемент`, `Серия`, `Наименование` и т.д. — они уже в строке списка) и технические поля истории (`UpKoef`, `IDSchEl`, `ImportDate` и др.). Поля, которых нет в описании, выводятся в конце как есть (`FirstSrokPost`, `DtaPost1`, `DT`, `ans`, `PostKol`, `PathKol`, `ShippedKol`).
+- Даты (`ДатаСчета`, `СрокПоставки`, `ProductDate`, `WarrantyDate`, `ДатаНакладной`) выводятся как в Access, `dd.mm.yy`.
+- Данные грузятся при выборе строки списка (`StatController::actionSch`), как перезапрос подформы на `Form_Current`.
+- Кнопка `ShowSch` подформы (показать счёт, видна вне вида `b`) не перенесена: обработчик не разобран.
+
+## Заказы с отметкой об ознакомлении
+- Только вид `b`: список `LstZakasTrack` главной формы. В Access он стоит справа от подформы `s`; здесь панель «Заказы» — рядом с «Историей элемента».
+- Источник: `exec dbo.xp_SkladTrackingZakLst @SkladID`, где `@SkladID` — «Код» выбранной строки. Пять колонок (`StatColumns::TRACK_META`): Ознакомлен («да»/«нет»), Заказ, Ближ.старт, Кол.изд, Название; порядок задаёт процедура — по «Ближ.старт».
+- Двойной щелчок по строке (`LstZakasTrack_DblClick`): «Установить отметку об ознакомлении?», если в строке «нет», иначе «Снять отметку об ознакомлении?». Затем `xp_SkladTrackingUpdOzn` получает название заказа и текущее значение («нет» — поставить, «да» — снять). При результате > 0 список перечитывается. В Access при неудаче сообщение не показывается, здесь выводится сообщение.
+- Поле `NmeIDz` (название выбранного заказа под списком) отдельным элементом не сделано: колонка «Название» показывает текст целиком.
+- Допущение: в коде `frmSt` источник списка нигде не назначается — его заполняет общая функция `SetRS4DopData`, которой нет в выгрузке. Привязка к текущему элементу и момент загрузки (выбор строки) восстановлены по составу колонок процедуры. Текст `xp_SkladTrackingUpdOzn` тоже отсутствует: параметры взяты из вызова в VBA.
+
 ## Аналоги
 - Под списком — панель аналогов текущего элемента (подформа Access `subFrmStAnalog`).
 - Аналоги грузятся при выборе строки: `exec dbo.xp_frmStRS1Analog @Код`. Процедура подбирает позиции по Элемент/Серия/Наименование/Номинал исходного элемента и сортирует по количеству.
@@ -226,6 +244,6 @@ perm: form:frmSt
 - Курс USD (нужен только виду 7) — `xp_GetKursByVal 840`; если в фильтре курс задан, берётся он.
 - Виды `9` и `a` вызываются штатно (`xp_frmStNewRS9_0`, `xp_frmStNewRSa_0`). Их результат строится по `dbo.Sklad1C` с `Who = CURRENT_USER`; таблицу наполняет `PrepareMinKolFrom1C` вне формы `frmSt` — при незаполненной таблице список будет пустым (как и в Access).
 - Форма переноса элемента `frmMoveEl` (двойной щелчок по «ГдеКупил» = «ПЕРЕЛОЖИТЬ НА СКЛАДЕ») не перенесена: показывается сообщение.
-- Счета элемента (подформа `s`, `SubFrmStatSch`) — заглушка: в `frmSt` у неё только переприсвоение `RecordSource`, экспорт формы и процедура в `xp.txt` отсутствуют.
+- Счета элемента (подформа `s`, `SubFrmStatSch`) — грузятся (`xp_SubFrmStatSch`), но точная раскладка колонок, ширины и кнопка `ShowSch` ждут экспорта формы `SubFrmStatSch`: сейчас колонки собраны из обращений `frmSt` к её полям и текста процедуры.
 - Фильтр по счетам (`filt1`/`filt2`/`filt3`, временная таблица `#tblTmpSt`) — вторая очередь.
 - Групповое примечание (`btnChgPrimGroup`) — вторая очередь.

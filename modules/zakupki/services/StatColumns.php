@@ -271,6 +271,168 @@ class StatColumns
     ];
 
     /**
+     * Колонки подформы s (SubFrmStatSch): счета элемента, в виде b — история элемента.
+     *
+     * Источник — exec dbo.xp_SubFrmStatSch @txtID, @Rgm. Дизайна подформы в выгрузке Forms/ нет,
+     * поэтому состав колонок собран из того, что известно:
+     *   - frmSt (fnRepaintFormStat) обращается к полям подформы Количество и Недополучено
+     *     (в виде b их ControlSource меняется на Кол и NedopolByNakl), к колонкам ProductDate,
+     *     WarrantyDate, WarrantySrok (видны только в виде b) и к кнопке ShowSch;
+     *   - вне вида b процедура отдаёт открытые позиции счетов (НомерСчета, ДатаСчета, Количество,
+     *     Недополучено, СрокПоставки, Организация, Покупатель, …), в виде b — историю элемента
+     *     (xp_HistoryElem: приход и оплаты, сроки, гарантия).
+     *
+     * Подписи и ширины полей истории — как во вкладке «История» карточки элемента
+     * (subfrmObnovlen1, ElemService::COLS). Ширины колонок счетов ориентировочные.
+     * Поля, которых здесь нет, выводятся в конце как есть.
+     *
+     * @var array<string, array{0:string,1:int,2:bool}>
+     */
+    public const SCH_META = [
+        // счета (все виды, кроме b)
+        'НомерСчета'      => ['№ счёта', 110, false],
+        'ДатаСчета'       => ['Дата счёта', 80, false],
+        'Организация'     => ['Организация', 220, false],
+        'Покупатель'      => ['Покупатель', 120, false],
+        'Количество'      => ['Кол-во', 70, true],
+        'Недополучено'    => ['Недополучено', 90, true],
+        'СрокПоставки'    => ['Срок поставки', 90, false],
+        'Probl'           => ['Проблема', 70, false],
+        // те же места подформы в виде b (ControlSource меняет fnRepaintFormStat)
+        'Кол'             => ['Кол-во', 70, true],
+        'NedopolByNakl'   => ['Недополучено', 90, true],
+        'ProductDate'     => ['Дата выпуска', 94, false],
+        'WarrantySrok'    => ['Срок гарантии', 94, false],
+        'WarrantyDate'    => ['Гарантия до', 94, false],
+        // история элемента (вид b): остальное — как во вкладке «История» карточки
+        'НомерНакладной'   => ['№ накладной', 76, false],
+        'ДатаНакладной'    => ['Дата накладной', 62, false],
+        'ЦенаОптовая'      => ['Опт, $.', 60, true],
+        'Цена с НДС (руб)' => ['Цена с НДС (руб)', 78, true],
+        'ТочноеНазвание'   => ['Точное название', 285, false],
+        'Prim'             => ['Примечание', 200, false],
+        'IsProblem'        => ['Проблема', 60, false],
+        'Кто'              => ['Кто', 60, false],
+        'Когда'            => ['Когда', 80, false],
+        'План.дата'        => ['План. дата', 80, false],
+        'Оплачен'          => ['Оплачен', 80, false],
+        'План.срок'        => ['План. срок', 80, false],
+        'Реал.срок'        => ['Реал. срок', 80, false],
+        'DelayedDays'      => ['Задержка, дн.', 70, true],
+        'ГТД'              => ['ГТД', 155, false],
+        'Страна'           => ['Страна', 80, false],
+        'KolDataCode'      => ['Кол-во кодов', 80, true],
+        'Ostatok'          => ['Остаток', 80, true],
+        'FirmaBig'         => ['Фирма', 120, false],
+    ];
+
+    /**
+     * Порядок колонок подформы s. В наборе присутствует либо «Количество» с «Недополучено»
+     * (счета), либо «Кол» с «NedopolByNakl» (история), поэтому места не пересекаются.
+     */
+    public const SCH_ORDER = [
+        'НомерСчета', 'ДатаСчета', 'Организация', 'Покупатель',
+        'Количество', 'Кол', 'Недополучено', 'NedopolByNakl',
+        'СрокПоставки', 'Probl', 'IsProblem',
+        'ProductDate', 'WarrantySrok', 'WarrantyDate',
+    ];
+
+    /** Колонки-даты подформы s: выводятся как в Access, dd.mm.yy. */
+    public const SCH_DATES = ['ДатаСчета', 'СрокПоставки', 'ProductDate', 'WarrantyDate', 'ДатаНакладной'];
+
+    /**
+     * Служебные поля подформы s.
+     *
+     * PredShcID и AllID — ключи; Tip, OverrideProblem — признаки; данные самого элемента
+     * (Код, Элемент, Серия, …) повторяются в каждой строке — они уже есть в строке списка.
+     * Технические поля истории (UpKoef, IDSchEl, ImportDate, …) скрыты и во вкладке «История»
+     * карточки элемента (ElemService::COLS).
+     */
+    public const SCH_HIDDEN = [
+        'PredShcID', 'AllID', 'Tip', 'OverrideProblem',
+        'Код', 'Элемент', 'Серия', 'Наименование', 'Номинал', 'Корпус', 'Изготовитель',
+        'ГдеКупил', 'ПримечаниеДолг', 'Kolvo',
+        'UpKoef', 'Repl4Kfs', 'Реал.дата', 'kolPhoto', 'IDSchEl', 'WarrantyExpired',
+        'InSklad', 'ImportDate', 'AdditFile',
+    ];
+
+    /**
+     * Колонки подформы s по фактическим полям результата.
+     *
+     * @param array  $rows строки источника
+     * @param string $vid  вид списка: в виде b признак IsProblem остаётся (в истории нет готовой
+     *                     колонки Probl), в остальных видах скрыт — Probl уже выведен
+     * @return array<int, array{0:string,1:string,2:int,3:bool}> [поле, подпись, ширина, вправо]
+     */
+    public static function schColumns(array $rows, string $vid = ''): array
+    {
+        $hidden = $vid === 'b' ? self::SCH_HIDDEN : array_merge(self::SCH_HIDDEN, ['IsProblem']);
+
+        $fields = [];
+        foreach ($rows as $r) {
+            foreach (array_keys($r) as $k) {
+                if (!in_array($k, $hidden, true)) $fields[$k] = true;
+            }
+        }
+
+        $out = [];
+        foreach (self::SCH_ORDER as $f) {
+            if (!isset($fields[$f])) continue;
+            [$title, $width, $right] = self::SCH_META[$f] ?? [$f, 0, false];
+            $out[] = [$f, $title, $width, $right];
+            unset($fields[$f]);
+        }
+        foreach (array_keys($fields) as $f) {
+            [$title, $width, $right] = self::SCH_META[$f] ?? [$f, 0, false];
+            $out[] = [$f, $title, $width, $right];
+        }
+        return $out;
+    }
+
+    /**
+     * Колонки списка LstZakasTrack главной формы frmSt — заказы, в которых участвует элемент,
+     * с отметкой об ознакомлении (список виден только в виде b).
+     *
+     * Источник — exec dbo.xp_SkladTrackingZakLst @SkladID. Пять колонок процедуры — это те же
+     * пять колонок списка (ColumnCount = 5), подписи берутся из набора (ColumnHeads = True).
+     * Ширины в Access (510;739;908;567;965 твипов) рассчитаны на узкий список с прокруткой;
+     * здесь панель шире, поэтому ширины свои.
+     *
+     * @var array<string, array{0:string,1:int,2:bool}>
+     */
+    public const TRACK_META = [
+        'Ознакомлен' => ['Ознакомлен', 90, false],
+        'Заказ'      => ['Заказ', 220, false],
+        'Ближ.старт' => ['Ближ.старт', 90, false],
+        'Кол.изд'    => ['Кол.изд', 70, true],
+        'Название'   => ['Название', 320, false],
+    ];
+
+    /**
+     * Колонки списка заказов по фактическим полям результата.
+     *
+     * @return array<int, array{0:string,1:string,2:int,3:bool}> [поле, подпись, ширина, вправо]
+     */
+    public static function trackColumns(array $rows): array
+    {
+        $fields = [];
+        foreach ($rows as $r) {
+            foreach (array_keys($r) as $k) $fields[$k] = true;
+        }
+
+        $out = [];
+        foreach (self::TRACK_META as $f => [$title, $width, $right]) {
+            if (!isset($fields[$f])) continue;
+            $out[] = [$f, $title, $width, $right];
+            unset($fields[$f]);
+        }
+        foreach (array_keys($fields) as $f) {
+            $out[] = [$f, $f, 0, false];
+        }
+        return $out;
+    }
+
+    /**
      * Колонки резервов по фактическим полям результата.
      *
      * @param array  $rows строки источника

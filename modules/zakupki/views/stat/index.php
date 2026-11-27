@@ -439,14 +439,37 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
         <div class="vh-list-scroll" id="stResBox"></div>
     </section>
 
-    <?php /* s — подформа SubFrmStatSch: счета/накладные по элементу
-             (в Access колонки Недополучено = NedopolByNakl, Количество = Кол). */ ?>
+    <?php /* В виде b подформа s и список LstZakasTrack стоят в одну строку — в Access список
+             расположен справа от подформы (Left 17000 при ширине подформы 16700). */ ?>
+    <?php if ((string)$filter->vid === 'b'): ?><div class="vh-row"><?php endif ?>
+
+    <?php /* s — подформа SubFrmStatSch: счета элемента.
+             Источник: exec dbo.xp_SubFrmStatSch @txtID, @Rgm (Rgm — вид списка).
+             В виде b процедура отдаёт историю элемента (xp_HistoryElem): там поля «Кол-во» и
+             «Недополучено» называются Кол и NedopolByNakl (fnRepaintFormStat меняет ControlSource)
+             и показаны даты выпуска и гарантии; в остальных видах — открытые позиции счетов. */ ?>
     <section class="vh-panel" id="stSch">
-        <div class="vh-panel-head"><span>Счета элемента (SubFrmStatSch)</span></div>
-        <div class="vh-list-scroll">
-            <div class="vh-stub">Тут будет список счетов по текущему элементу.</div>
+        <div class="vh-panel-head">
+            <span><?= (string)$filter->vid === 'b' ? 'История элемента' : 'Счета элемента' ?>
+                <span class="vh-an-code" id="stSchCode"></span></span>
+            <span class="vh-tools" id="stSchInfo">выберите строку в списке</span>
         </div>
+        <div class="vh-list-scroll" id="stSchBox"></div>
     </section>
+
+    <?php /* LstZakasTrack — заказы элемента с отметкой об ознакомлении (только вид b).
+             Источник: exec dbo.xp_SkladTrackingZakLst @SkladID. Двойной щелчок по строке
+             ставит или снимает отметку (xp_SkladTrackingUpdOzn). */ ?>
+    <?php if ((string)$filter->vid === 'b'): ?>
+    <section class="vh-panel" id="stTrack">
+        <div class="vh-panel-head">
+            <span>Заказы</span>
+            <span class="vh-tools" id="stTrackInfo">двойной щелчок по строке — отметка об ознакомлении</span>
+        </div>
+        <div class="vh-list-scroll" id="stTrackBox"></div>
+    </section>
+    <?php endif ?>
+    <?php if ((string)$filter->vid === 'b'): ?></div><?php endif ?>
 
     <section class="vh-panel vh-an">
         <div class="vh-panel-head">
@@ -703,6 +726,11 @@ input[type=date].vh-inp { padding:0 .2rem; }
 .vh-stack > * { flex:0.5 1 0; min-height:4rem; display:flex; flex-direction:column; }
 .vh-stack > .vh-pane-main { flex:2 1 0; min-height:7rem; }
 .vh-pane-main > .vh-panel { flex:1 1 auto; min-height:0; }
+/* Вид b: подформа s (история элемента) и список LstZakasTrack в одну строку — в Access список
+   стоит справа от подформы. Ширина 2:1. */
+.vh-stack > .vh-row { flex-direction:row; gap:.4rem; }
+.vh-row > .vh-panel { flex:1 1 0; min-width:0; }
+.vh-row > #stSch { flex:2 1 0; }
 
 .vh-panel { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.5rem;
     box-shadow:0 1px 3px rgba(64,179,216,.12); overflow:hidden; display:flex; flex-direction:column; min-height:0; }
@@ -712,7 +740,7 @@ input[type=date].vh-inp { padding:0 .2rem; }
 .vh-tools { display:flex; align-items:center; gap:.35rem; text-transform:none; letter-spacing:0; font-weight:400; }
 
 .vh-list-scroll { overflow:auto; flex:1 1 auto; min-height:0; }
-/* Заглушка нереализованной подформы */
+/* Сообщение-заглушка в панели: пустой список или нереализованная подформа */
 .vh-stub { padding:.6rem; color:#9db9c4; font-style:italic; }
 .vh-list { border-collapse:collapse; width:100%; font-size:12px; }
 .vh-list th { position:sticky; top:0; z-index:1; background:var(--vh-blue-l); color:var(--vh-ink);
@@ -824,6 +852,8 @@ $this->registerJs('window.ST = ' . Json::encode([
     'analogsUrl' => Url::to(['analogs']),        // аналоги текущего элемента (subFrmStAnalog)
     'reservesUrl' => Url::to(['reserves']),      // резервы текущего элемента (SubMinimFilter)
     'invoicesUrl' => Url::to(['invoices']),      // предложения поставщиков (SubFrmInvoices)
+    'schUrl' => Url::to(['sch']),                // счета элемента (SubFrmStatSch); в виде b — история элемента
+    'trackUrl' => Url::to(['track']),            // заказы с отметкой об ознакомлении (LstZakasTrack, вид b)
     'trgRecalcUrl' => Url::to(['trg-recalc']),   // пересчёт таргета по резерву (TrgRecalc)
     'statusesUrl' => Url::to(['statuses']),      // состояния проблемы (frmfndStatus, OpenArgs 25)
     'actUrl' => Url::to(['act']),                // сохранение примечания / комментария / состояния
@@ -865,6 +895,8 @@ $this->registerJs(<<<'JS'
         loadAnalogs(cur);
         loadReserves(cur);
         loadInvoices(cur);
+        loadSch(cur);
+        loadTrack(cur);
     };
 
     /**
@@ -941,6 +973,97 @@ $this->registerJs(<<<'JS'
             x.textContent = 'Не удалось получить резервы: ' + e.message;
             box.replaceChildren(x);
         }
+    }
+
+    /**
+     * Счета элемента — подформа s (SubFrmStatSch).
+     * В Access подформа перезапрашивалась вместе с текущей записью:
+     * exec xp_SubFrmStatSch @txtID, @Rgm (Rgm — вид списка; в виде b — история элемента).
+     */
+    async function loadSch(code) {
+        const box  = document.getElementById('stSchBox');
+        const info = document.getElementById('stSchInfo');
+        const lab  = document.getElementById('stSchCode');
+        if (!box || !cfg.schUrl) return;
+
+        if (!code) {
+            box.replaceChildren();
+            if (lab) lab.textContent = '';
+            if (info) info.textContent = 'выберите строку в списке';
+            return;
+        }
+
+        if (lab) lab.textContent = '№ ' + code;
+        if (info) info.textContent = 'загрузка…';
+        try {
+            const r = await fetch(cfg.schUrl + '?id=' + encodeURIComponent(code)
+                + '&vid=' + encodeURIComponent(cfg.vid || '1'),
+                { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const d = await r.json();
+            if (cur !== code) return;                    // пока грузили, выбрали другую запись
+            box.innerHTML = d.html || '';
+            if (info) info.textContent = d.error ? ''
+                : (d.count ? 'строк: ' + d.count : (cfg.vid === 'b' ? 'записей нет' : 'открытых счетов нет'));
+        } catch (e) {
+            if (cur !== code) return;
+            if (info) info.textContent = '';
+            const x = document.createElement('div');
+            x.className = 'vh-alert';
+            x.textContent = 'Не удалось получить счета элемента: ' + e.message;
+            box.replaceChildren(x);
+        }
+    }
+
+    /**
+     * Заказы текущего элемента с отметкой об ознакомлении — список LstZakasTrack главной формы
+     * (только вид b). Источник: exec xp_SkladTrackingZakLst @SkladID (код текущего элемента).
+     */
+    async function loadTrack(code) {
+        const box  = document.getElementById('stTrackBox');
+        const info = document.getElementById('stTrackInfo');
+        if (!box || !cfg.trackUrl) return;
+
+        if (!code) {
+            box.replaceChildren();
+            if (info) info.textContent = 'выберите строку в списке';
+            return;
+        }
+
+        if (info) info.textContent = 'загрузка…';
+        try {
+            const r = await fetch(cfg.trackUrl + '?id=' + encodeURIComponent(code),
+                { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const d = await r.json();
+            if (cur !== code) return;                    // пока грузили, выбрали другую запись
+            box.innerHTML = d.html || '';
+            if (info) info.textContent = d.error ? ''
+                : (d.count ? 'строк: ' + d.count + ' · двойной щелчок — отметка об ознакомлении' : 'заказов нет');
+        } catch (e) {
+            if (cur !== code) return;
+            if (info) info.textContent = '';
+            const x = document.createElement('div');
+            x.className = 'vh-alert';
+            x.textContent = 'Не удалось получить заказы: ' + e.message;
+            box.replaceChildren(x);
+        }
+    }
+
+    // LstZakasTrack_DblClick: «нет» — «Установить отметку об ознакомлении?», иначе «Снять отметку…?»;
+    // затем xp_SkladTrackingUpdOzn(Заказ, текущее значение) и, при успехе, перечитывание списка.
+    const trackBox = document.getElementById('stTrackBox');
+    if (trackBox) {
+        trackBox.addEventListener('dblclick', async e => {
+            const tr = e.target.closest('#stTrackList tbody tr[data-order]');
+            if (!tr) return;
+            const ozn = tr.dataset.ozn || '';
+            const q = ozn === 'нет' ? 'Установить отметку об ознакомлении?' : 'Снять отметку об ознакомлении?';
+            if (!confirm(q)) return;
+            const d = await postAct({ act: 'Ozn', id: cur, name: tr.dataset.order, ozn });
+            if (!d.ok) { alert(d.error || 'Не удалось изменить отметку'); return; }
+            await loadTrack(cur);
+        });
     }
 
     /**

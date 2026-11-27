@@ -72,6 +72,18 @@ class LegacySp
     }
 
     /**
+     * CommonStartSP6, prms = 0, когда первый параметр процедуры — не ID, а текст:
+     * (Dta nvarchar, Dta nvarchar(ln), res OUTPUT int).
+     *   VBA: CommonStartSP6(Me!LstZakasTrack.Column(1), "dbo.xp_SkladTrackingUpdOzn", CStr(Me!LstZakasTrack.Column(0)), , , 50)
+     *   → LegacySp::sp6Text($order, 'dbo.xp_SkladTrackingUpdOzn', $ozn, 0, 50)
+     */
+    public static function sp6Text(string $first, string $proc, string $dta, int $dflt = 0, int $ln = 50): int
+    {
+        return (int)self::out("DECLARE @r int; EXEC $proc ?, ?, @r OUTPUT; SELECT @r",
+            [$first, mb_substr($dta, 0, $ln)], $proc, $dflt, 'int');
+    }
+
+    /**
      * CommonStartSP7, prms = 0: (ID int, Dta nvarchar(ln), res OUTPUT nvarchar(lnRes)). Возвращает строку.
      * prms = 2 (без res) — sp7NoRes.
      */

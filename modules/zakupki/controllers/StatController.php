@@ -138,6 +138,59 @@ class StatController extends BaseController
     }
 
     /**
+     * Счета элемента — подформа s (SubFrmStatSch) формы frmSt.
+     *
+     * Грузятся по щелчку по строке списка, как перезапрос подформы на Form_Current.
+     * В виде b процедура отдаёт историю элемента (xp_HistoryElem), в остальных видах —
+     * открытые позиции счетов; подписи «Кол-во» и «Недополучено» в виде b берутся с полей
+     * Кол и NedopolByNakl (fnRepaintFormStat меняет ControlSource подформы).
+     *
+     * @legacy frmSt: подформа s (SubFrmStatSch) → exec dbo.xp_SubFrmStatSch @txtID, @Rgm;
+     *         fnRepaintFormStat (Case "b": Me!s![Количество].ControlSource = "Кол",
+     *         Me!s![Недополучено].ControlSource = "NedopolByNakl", колонки гарантии)
+     */
+    public function actionSch(int $id, string $vid = '1')
+    {
+        $res = (new StatService())->sch($id, $vid);
+
+        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+        return [
+            'html'  => $this->renderPartial('_sch', [
+                'rows'  => $res['rows'],
+                'cols'  => StatColumns::schColumns($res['rows'], $vid),
+                'empty' => $vid === 'b' ? 'Записей нет' : 'Открытых счетов нет',
+                'error' => $res['error'],
+            ]),
+            'count' => count($res['rows']),
+            'error' => $res['error'],
+        ];
+    }
+
+    /**
+     * Заказы текущего элемента с отметкой об ознакомлении — список LstZakasTrack формы frmSt.
+     *
+     * Грузятся по щелчку по строке списка; панель показывается только в виде b,
+     * как и сам список в fnRepaintFormStat.
+     *
+     * @legacy frmSt: LstZakasTrack (exec dbo.xp_SkladTrackingZakLst), fnRepaintFormStat (Case "b")
+     */
+    public function actionTrack(int $id)
+    {
+        $res = (new StatService())->trackList($id);
+
+        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+        return [
+            'html'  => $this->renderPartial('_track', [
+                'rows'  => $res['rows'],
+                'cols'  => StatColumns::trackColumns($res['rows']),
+                'error' => $res['error'],
+            ]),
+            'count' => count($res['rows']),
+            'error' => $res['error'],
+        ];
+    }
+
+    /**
      * Пересчёт таргета по резерву текущего элемента — кнопка TrgRecalc формы frmSt.
      *
      * Access: если резервов нет — «Не выбран резерв»; если IDRes <= 0 — «Не удается найти
@@ -206,10 +259,12 @@ class StatController extends BaseController
     }
 
     /**
-     * Действия двойного щелчка по строке списка: примечание, комментарий производства, состояние проблемы.
+     * Действия по строке списка: примечание, комментарий производства, состояние проблемы,
+     * отметка об ознакомлении с заказом (список LstZakasTrack, вид b).
      *
      * @legacy frmMinimum: Поле18_DblClick (xp_SkladUpdPrim), SostProblEl_DblClick (xp_SkladTrackingUpdComm),
-     *         txtID_DblClick (frmfndStatus 25 → xp_StatWorkWithProblemUpdSost)
+     *         txtID_DblClick (frmfndStatus 25 → xp_StatWorkWithProblemUpdSost);
+     *         frmSt: LstZakasTrack_DblClick (xp_SkladTrackingUpdOzn)
      */
     public function actionAct()
     {
@@ -239,6 +294,8 @@ class StatController extends BaseController
             'NotRec' => $id > 0
                 ? $svc->toggleNotRec($id)
                 : ['ok' => false, 'error' => 'Не указан элемент.'],
+            // LstZakasTrack_DblClick: xp_SkladTrackingUpdOzn(«Заказ», текущее значение «Ознакомлен»)
+            'Ozn' => $svc->trackingOzn((string)($post['name'] ?? ''), (string)($post['ozn'] ?? '')),
             default => ['ok' => false, 'error' => 'Неизвестное действие.'],
         };
 

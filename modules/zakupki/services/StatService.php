@@ -489,6 +489,86 @@ class StatService
     }
 
     /**
+     * Счета элемента — подформа s (SubFrmStatSch) формы frmSt.
+     *
+     * Источник: exec dbo.xp_SubFrmStatSch @txtID, @Rgm, где @txtID — «Код» текущей строки
+     * списка, @Rgm — вид списка строкой. Процедура работает в двух режимах:
+     *   - вид b (ТЗ 630): exec dbo.xp_HistoryElem @txtID, 2, 0, 0, '' — история элемента
+     *     (приход и оплаты). В наборе поля «Кол-во» и «Недополучено» называются иначе — Кол и
+     *     NedopolByNakl: fnRepaintFormStat меняет для них ControlSource подформы;
+     *   - остальные виды: открытые позиции счетов (Количество − пришло > 0).
+     *
+     * @return array{rows:array, error:?string}
+     */
+    public function sch(int $skladId, string $vid = '1'): array
+    {
+        if ($skladId <= 0) {
+            return ['rows' => [], 'error' => null];
+        }
+
+        try {
+            $rows = $this->proc('dbo.xp_SubFrmStatSch ?, ?', [$skladId, $vid])->queryAll();
+        } catch (\Throwable $e) {
+            Yii::error('xp_SubFrmStatSch ' . $skladId . '/' . $vid . ': ' . $e->getMessage(), __METHOD__);
+            return ['rows' => [], 'error' => 'Не удалось получить счета элемента: ' . $e->getMessage()];
+        }
+
+        return ['rows' => $rows, 'error' => null];
+    }
+
+    /**
+     * Заказы текущего элемента с отметкой об ознакомлении — список LstZakasTrack формы frmSt (вид b).
+     *
+     * Источник: exec dbo.xp_SkladTrackingZakLst @SkladID, где @SkladID — «Код» текущей строки.
+     * Пять колонок списка (ColumnCount = 5): Ознакомлен («да»/«нет»), Заказ (NameProcess),
+     * Ближ.старт, Кол.изд, Название (NameFile); порядок задаёт процедура — по «Ближ.старт».
+     *
+     * В Access источник списка назначает общая функция SetRS4DopData (в выгрузке её нет).
+     * Состав колонок процедуры совпадает со списком, поэтому здесь список привязан
+     * к текущему элементу и грузится при выборе строки.
+     *
+     * @return array{rows:array, error:?string}
+     */
+    public function trackList(int $skladId): array
+    {
+        if ($skladId <= 0) {
+            return ['rows' => [], 'error' => null];
+        }
+
+        try {
+            $rows = $this->proc('dbo.xp_SkladTrackingZakLst ?', [$skladId])->queryAll();
+        } catch (\Throwable $e) {
+            Yii::error('xp_SkladTrackingZakLst ' . $skladId . ': ' . $e->getMessage(), __METHOD__);
+            return ['rows' => [], 'error' => 'Не удалось получить заказы: ' . $e->getMessage()];
+        }
+
+        return ['rows' => $rows, 'error' => null];
+    }
+
+    /**
+     * Отметка об ознакомлении с заказом — LstZakasTrack_DblClick формы frmSt.
+     *
+     * VBA: CommonStartSP6(Column(1), "dbo.xp_SkladTrackingUpdOzn", CStr(Column(0)), , , 50) > 0,
+     * где Column(1) — «Заказ» (NameProcess), Column(0) — текущее значение «Ознакомлен»:
+     * процедура получает «нет», когда отметку ставят, и «да», когда снимают. При успехе (> 0)
+     * Access перечитывает список, при неудаче ничего не сообщает.
+     *
+     * @return array{ok:bool, error:?string}
+     */
+    public function trackingOzn(string $order, string $ozn): array
+    {
+        if ($order === '' || !in_array($ozn, ['да', 'нет'], true)) {
+            return ['ok' => false, 'error' => 'Не выбран заказ.'];
+        }
+
+        $res = LegacySp::sp6Text($order, 'dbo.xp_SkladTrackingUpdOzn', $ozn, 0, 50);
+
+        return $res > 0
+            ? ['ok' => true, 'error' => null]
+            : ['ok' => false, 'error' => 'Не удалось изменить отметку об ознакомлении.'];
+    }
+
+    /**
      * Примечание элемента (двойной щелчок по «Примечание»): CommonStartSP6(ID, xp_SkladUpdPrim, текст, 0, 500).
      *
      * @return array{ok:bool, error:?string} 1 — изменено, 2 — нет прав, иное — не удалось (как в Access)
