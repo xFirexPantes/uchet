@@ -31,7 +31,7 @@ class StatColumns
         'SharpName', 'NmeCat', 'CreatorCode', 'ExistMove', 'UPKoef', 'UpKoef', 'MinToBuy', 'TS',
         'FullDolg', 'KolInRes', 'SrcProblEl', 'KolZak', 'Свободно', 'DtaPost', 'IsExactDate',
         'MinStartZak', 'AppearMinByAdd', 'NedopolByNakl', 'Avt', 'IsDelayed',
-        'WhatFirmTxt', 'WF', 'NU', 'flgNU', 'Активный', 'Примечание', 'Серия',
+        'WhatFirmTxt', 'WF', 'NeedOzn', 'NU', 'flgNU', 'Активный', 'Примечание', 'Серия',
     ];
 
     /**
