@@ -77,8 +77,33 @@ class StatContext
         return (float)str_replace(',', '.', $v);
     }
 
+    /**
+     * Список менеджеров для выпадающего списка: exec dbo.xp_GetSkladManagersNew.
+     * Возвращает массив ['value' => '...', 'name' => '...'].
+     *
+     * @return array<int, array{value:string, name:string}>
+     */
+    public static function managerList(): array
+    {
+        $out = [];
+        foreach (self::managerRows() as $r) {
+            $val = (string)($r[0] ?? '');
+            $out[] = ['value' => $val, 'name' => $val];
+        }
+        return $out;
+    }
+
     /** Строка выбранного менеджера из exec dbo.xp_GetSkladManagersNew (по номерам колонок). */
     private static function managerRow(): array
+    {
+        foreach (self::managerRows() as $row) {
+            if ((string)($row[0] ?? '') === self::$manager) return $row;
+        }
+        return [];
+    }
+
+    /** Все строки списка менеджеров; запрос — один раз на запрос страницы. */
+    private static function managerRows(): array
     {
         if (self::$managers === null) {
             try {
@@ -90,9 +115,6 @@ class StatContext
                 self::$managers = [];
             }
         }
-        foreach (self::$managers as $row) {
-            if ((string)($row[0] ?? '') === self::$manager) return $row;
-        }
-        return [];
+        return self::$managers;
     }
 }

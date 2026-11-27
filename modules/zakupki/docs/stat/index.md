@@ -2,7 +2,7 @@
 title: Статистика
 access_form: frmSt
 tz: []
-procs: [dbo.xp_GetVidSel, dbo.xp_frmStNewRS1_0, dbo.xp_frmStNewRS2_0, dbo.xp_frmStNewRS3_0, dbo.xp_frmStNewRS4_0, dbo.xp_frmStNewRS5_0, dbo.xp_frmStNewRS7_0, dbo.xp_frmStNewRS9_0, dbo.xp_frmStNewRSa_0, dbo.xp_frmStNewRSb_0, dbo.xp_frmStNewRS1_1, dbo.xp_frmStRS1Analog, dbo.xp_GetSkladManagersNew, dbo.xp_GetKursByVal, dbo.xp_GetAdr, dbo.xp_SkladUpdPrim, dbo.xp_SkladTrackingUpdComm, dbo.xp_StatWorkWithProblemLstSost, dbo.xp_StatWorkWithProblemUpdSost]
+procs: [dbo.xp_GetVidSel, dbo.xp_frmStNewRS1_0, dbo.xp_frmStNewRS2_0, dbo.xp_frmStNewRS3_0, dbo.xp_frmStNewRS4_0, dbo.xp_frmStNewRS5_0, dbo.xp_frmStNewRS7_0, dbo.xp_frmStNewRS9_0, dbo.xp_frmStNewRSa_0, dbo.xp_frmStNewRSb_0, dbo.xp_frmStNewRS1_1, dbo.xp_frmStRS1Analog, dbo.xp_GetWhatFirm, dbo.xp_GetSkladManagersNew, dbo.xp_GetKursByVal, dbo.xp_GetAdr, dbo.xp_SkladUpdPrim, dbo.xp_SkladTrackingUpdComm, dbo.xp_StatWorkWithProblemLstSost, dbo.xp_StatWorkWithProblemUpdSost]
 perm: form:frmSt
 ---
 
@@ -14,12 +14,17 @@ perm: form:frmSt
 ## Фильтры
 - **Вид** — список из `exec dbo.xp_GetVidSel`. Смена вида сразу перечитывает список.
 - **Поиск** — по части текста, как `FindElem` в Access (`%текст%`). Пусто — весь список.
-- **Поставщик и город** — `filt1` и `filt2`.
-- **Дата документа** — `filt3`: если заданы обе даты, список строится процедурой `xp_frmStNewRS1_1` (в Access так же: заполненный `PickDate` перекрывает вид).
-- **Сырьё** — `TypeSel`: НЕ давальческое / давальческое / не важно.
-- **Аналоги** — `Analog`: обычные / по аналогу.
+- **Фирмы** (`f`) — мультивыбор, как кнопка «Выбрать фирму» (`frmFndFirm`, OpenArgs 7). «Все» — `%`, иначе ID через запятую. Это второй параметр процедуры вида. В виде 7 скрыт вместе с `TypeSel`.
+- **Фирма (WhatFirm)** — одиночный список `exec dbo.xp_GetWhatFirm`. В виде 7 скрыт вместе с `TypeSel`.
+- **Менеджер** — `SkladManagers`, `exec dbo.xp_GetSkladManagersNew`. От него зависят ответственный (`Otv`, 3-я колонка) и раскраска долгов (4-я колонка). В виде 7 скрыт вместе с `TypeSel`.
+- **Дата документа** — `PickDate` / `PickDate2`: если заданы обе даты, список строится процедурой `xp_frmStNewRS1_1` (в Access так же: заполненный `PickDate` перекрывает вид). Поля видны только в виде 1 при `fltZ1 = 1`.
+- **Сырьё** — `TypeSel`: НЕ давальческое / давальческое / не важно. В виде 7 скрыт.
+- **Заказ** — `fltZ1`: «Заказ>0» (суффикс `_0` у имени процедуры) / «Все».
+- **Состояние** — `fltStatProblEl`, `exec dbo.xp_StatWorkWithProblemLstSost 1`. Виден только в виде 1; значение 255 — все состояния.
 - **ФЗ-275** — флажок `FZ275`.
 - **Применить** — перечитать список с текущими фильтрами.
+
+`filt1` / `filt2` / `filt3` (поставщик, город, дата) в Access — фильтры временной таблицы счетов (`#tblTmpSt`, кнопки `filt9` / `filt10`), а не параметры процедуры вида. Переносятся отдельно, вместе с экраном фильтра по счетам.
 
 ## Список
 - Колонки строятся по полям, которые вернула процедура: у каждого вида свой набор.
@@ -99,10 +104,10 @@ perm: form:frmSt
 - Кнопки печати, Excel, заказов, перемещения, трекинга и прочие действия формы `frmSt` — вторая очередь.
 
 ## Пока заглушки
-- Ответственный (`Otv`, в Access `SkladManagers.Column(2)`) и признак подсветки долгов (`NeedPaintDolg`, `Column(3)`) читаются из `exec dbo.xp_GetSkladManagersNew` в классе `StatContext`; если процедуры нет или она ничего не вернула — 0 / false.
+- Ответственный (`Otv`, в Access `SkladManagers.Column(2)`) и признак подсветки долгов (`NeedPaintDolg`, `Column(3)`) читаются из выбранного менеджера (`exec dbo.xp_GetSkladManagersNew`) в классе `StatContext`; для «%» — 0 / false, как в Access. Если процедуры нет или она ничего не вернула — 0 / false.
 - Курс USD (нужен только виду 7) — `xp_GetKursByVal 840`; если в фильтре курс задан, берётся он.
 - Виды `9` и `a` требуют `PrepareMinKolFrom1C` — при выборе показывается сообщение, что вид не перенесён.
-- `fltZ1` («Недопол>0» / «Все», суффикс `_0` в имени процедуры) в интерфейс не вынесен.
 - Форма переноса элемента `frmMoveEl` (двойной щелчок по «ГдеКупил» = «ПЕРЕЛОЖИТЬ НА СКЛАДЕ») не перенесена: показывается сообщение.
 - Панель `SubMinimumFilter` — не перенесена.
+- Фильтр по счетам (`filt1`/`filt2`/`filt3`, временная таблица `#tblTmpSt`) — вторая очередь.
 - Групповое примечание (`btnChgPrimGroup`) и кнопка «Счёт зап.» (`RequestSch`) — вторая очередь.

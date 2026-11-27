@@ -12,12 +12,15 @@ use Yii;
  * параметров процедур мы пока не знаем.
  *
  * Порядок вызова из VBA (SetRS4Statistic):
- *   xp_frmStNewRS{What}  'fnd', 'Post', Otv, Rgm, WhatFirm, SkladID, FZ275, fltStatProblEl
- *   xp_frmStNewRS7_0     'fnd', 'Post', 'Otv', Rgm, WhatFirm, 0, Bnd, Razn, Kurs
- *   xp_frmStNewRS1_1     'fnd', 'Post', Otv, Rgm, WhatFirm, 'yyyymmdd', 'yyyymmdd', 0, FZ275, fltStatProblEl
+ *   xp_frmStNewRS{What}  'fnd', 'f', Otv, Rgm, WhatFirm, SkladID, FZ275, fltStatProblEl
+ *   xp_frmStNewRS7_0     'fnd', 'f', 'Otv', Rgm, WhatFirm, 0, Bnd, Razn, Kurs
+ *   xp_frmStNewRS1_1     'fnd', 'f', Otv, Rgm, WhatFirm, 'yyyymmdd', 'yyyymmdd', 0, FZ275, fltStatProblEl
  *
- * ⚠ Что пока заглушки (см. StatContext): Otv (SkladManagers.Column(2)) и NeedPaintDolg (Column(3)),
- *   в Access они берутся из Forms!frmUchet. Курс USD (KursUSD) тоже оттуда — нужен только виду 7.
+ * f — мультивыбор фирм (frmFndFirm 7 → xp_frmStMultiSelectResult): «%» или ID через запятую.
+ * filt1/filt2/filt3 в эти процедуры не передаются — они работают с временной таблицей счетов.
+ *
+ * ⚠ Otv (SkladManagers.Column(2)) и NeedPaintDolg (Column(3)) берутся из выбранного менеджера
+ *   (StatContext::setManager), курс USD (KursUSD) — из xp_GetKursByVal 840.
  */
 class StatService
 {
@@ -136,6 +139,56 @@ class StatService
     }
 
     /**
+     * Список фирм: exec dbo.xp_GetWhatFirm (2 столбца: ID, Name).
+     * Используется для WhatFirm (одиночный выбор) и для мультивыбора фирм (f).
+     *
+     * @return array<int, array{id:string, name:string}>
+     */
+    public function firms(): array
+    {
+        try {
+            $rows = $this->sql('EXEC dbo.xp_GetWhatFirm')->queryAll();
+        } catch (\Throwable $e) {
+            Yii::warning('xp_GetWhatFirm: ' . $e->getMessage(), __METHOD__);
+            return [];
+        }
+
+        $out = [];
+        foreach ($rows as $r) {
+            $vals = array_values($r);
+            $out[] = [
+                'id'   => (string)($vals[0] ?? ''),
+                'name' => (string)($vals[1] ?? $vals[0] ?? ''),
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Список состояний проблемы: exec dbo.xp_StatWorkWithProblemLstSost [mode].
+     *
+     * mode = 1 — для fltStatProblEl (видимый фильтр, доступен в виде 1).
+     * mode = 0 — для двойного щелчка по «Код» (frmfndStatus, OpenArgs 25).
+     *
+     * @return array<int, array{id:int, name:string}>
+     */
+    public function problemStatuses(int $mode = 0): array
+    {
+        try {
+            $sql = 'EXEC dbo.xp_StatWorkWithProblemLstSost' . ($mode ? ' ' . $mode : '');
+            $rows = $this->sql($sql)->queryAll(\PDO::FETCH_NUM);
+        } catch (\Throwable $e) {
+            Yii::error('xp_StatWorkWithProblemLstSost: ' . $e->getMessage(), __METHOD__);
+            return [];
+        }
+
+        return array_map(static fn($r) => [
+            'id'   => (int)($r[0] ?? 0),
+            'name' => (string)($r[1] ?? ''),
+        ], $rows);
+    }
+
+    /**
      * Колонки подформы аналогов (subFrmStAnalog): [поле => [подпись, ширина в твипах, вправо]].
      *
      * Порядок — TabIndex из SaveAsText; ширина в твипах делится на 15 → px, как в Access.
@@ -218,11 +271,21 @@ class StatService
     public function vids(): array
     {
         try {
-            return $this->proc('dbo.xp_GetVidSel')->queryAll();
+            $rows = $this->proc('dbo.xp_GetVidSel')->queryAll();
         } catch (\Throwable $e) {
             Yii::warning('xp_GetVidSel: ' . $e->getMessage(), __METHOD__);
             return [];
         }
+
+        $out = [];
+        foreach ($rows as $r) {
+            $vals = array_values($r);
+            $out[] = [
+                'num'  => (string)($r['Num'] ?? $vals[1] ?? $vals[0] ?? ''),
+                'name' => (string)($r['Name'] ?? $vals[0] ?? ''),
+            ];
+        }
+        return $out;
     }
 
     /**
@@ -244,12 +307,14 @@ class StatService
 
         // FlgPaintDolg = False → к строке поиска добавляется «&» (так в Access по умолчанию).
         $fnd = StatContext::needPaintDolg() ? (string)$f->fnd : '&' . $f->fnd;
-        $post = (string)$f->post;
-        $otv  = StatContext::otv();                       // заглушка вместо SkladManagers.Column(2)
+        // Второй параметр SetRS4Statistic — Forms!frmst!f: мультивыбор фирм («%» или ID через запятую).
+        // Поставщик filt1 сюда НЕ передаётся: в Access он работает только с временной таблицей счетов.
+        $firmSel = (string)$f->f;
+        $otv  = StatContext::otv();                       // SkladManagers.Column(2)
         $rgm  = (int)$f->typeSel;
         $firm = (int)$f->firm;                            // WhatFirm: значение передаётся всегда, видно только виду 1_0
         $fz   = (int)$f->fz275 === 1 ? -1 : 0;            // флажок Access: True = -1
-        $flt  = 255;                                      // fltStatProblEl.DefaultValue = 255
+        $flt  = (int)$f->fltStatProblEl;                  // fltStatProblEl.DefaultValue = 255
 
         try {
             // Вид 7 всегда идёт через xp_frmStNewRS7_0 (в VBA проверка If What <> "7_0"),
@@ -259,16 +324,16 @@ class StatService
                 // Курс: если в фильтре не задан, берём тот же, что на экране учёта (Forms!frmUchet!KursUSD).
                 $kurs = (float)$f->kurs > 0 ? (float)$f->kurs : StatContext::kursUsd();
                 $rows = $this->sql('EXEC dbo.xp_frmStNewRS7_0 ?, ?, ?, ?, ?, 0, ?, ?, ?',
-                    [$fnd, $post, (string)$otv, $rgm, $firm,
+                    [$fnd, $firmSel, (string)$otv, $rgm, $firm,
                      (float)$f->bnd, (float)$f->razn, $kurs])->queryAll();
             } elseif ($f->dateS && $f->datePo) {
                 // PickDate не пуст → всегда xp_frmStNewRS1_1, независимо от вида
                 $rows = $this->proc('dbo.xp_frmStNewRS1_1 ?, ?, ?, ?, ?, ?, ?, 0, ?, ?',
-                    [$fnd, $post, $otv, $rgm, $firm, $this->ymd($f->dateS), $this->ymd($f->datePo), $fz, $flt])->queryAll();
+                    [$fnd, $firmSel, $otv, $rgm, $firm, $this->ymd($f->dateS), $this->ymd($f->datePo), $fz, $flt])->queryAll();
             } else {
                 $sklad = (int)$f->sklad;
                 $rows = $this->proc('dbo.xp_frmStNewRS' . $what . ' ?, ?, ?, ?, ?, ?, ?, ?',
-                    [$fnd, $post, $otv, $rgm, $firm, $sklad, $fz, $flt])->queryAll();
+                    [$fnd, $firmSel, $otv, $rgm, $firm, $sklad, $fz, $flt])->queryAll();
             }
         } catch (\Throwable $e) {
             Yii::error('xp_frmStNewRS' . $what . ': ' . $e->getMessage(), __METHOD__);
@@ -322,28 +387,6 @@ class StatService
             2       => ['ok' => false, 'error' => 'У вас нет прав на изменение примечания.'],
             default => ['ok' => false, 'error' => 'Не удалось изменить примечание.'],
         };
-    }
-
-    /**
-     * Список состояний проблемы для выбора: exec dbo.xp_StatWorkWithProblemLstSost.
-     * Это ветка «25» формы frmfndStatus (двойной щелчок по «Код»):
-     * в Access Fields(0) — ключ, Fields(1) — подпись.
-     *
-     * @return array<int, array{id:int, name:string}>
-     */
-    public function problemStatuses(): array
-    {
-        try {
-            $rows = $this->proc('dbo.xp_StatWorkWithProblemLstSost')->queryAll(\PDO::FETCH_NUM);
-        } catch (\Throwable $e) {
-            Yii::error('xp_StatWorkWithProblemLstSost: ' . $e->getMessage(), __METHOD__);
-            return [];
-        }
-
-        return array_map(static fn($r) => [
-            'id'   => (int)($r[0] ?? 0),
-            'name' => (string)($r[1] ?? ''),
-        ], $rows);
     }
 
     /**

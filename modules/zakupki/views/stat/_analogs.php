@@ -10,13 +10,13 @@
 use yii\helpers\Html;
 
 if ($error): ?>
-    <div class="st-alert"><?= Html::encode($error) ?></div>
+    <div class="vh-alert"><?= Html::encode($error) ?></div>
 <?php endif ?>
 <?php if (!$rows && !$error): ?>
-    <div class="st-empty">Аналогов нет</div>
+    <div class="empty">Аналогов нет</div>
 <?php endif ?>
 <?php if ($rows): ?>
-    <table class="st-list" id="stAnList">
+    <table class="vh-list" id="stAnList">
         <colgroup>
             <?php foreach ($cols as [$f, , $w]): ?>
                 <col<?= $w ? ' style="width:' . (int)$w . 'px"' : '' ?>>

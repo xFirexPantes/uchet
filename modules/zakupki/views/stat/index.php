@@ -1,6 +1,11 @@
 <?php
 /**
- * Статистика (frmSt) — современный вид: фильтры сверху, список элементов, футер, аналоги.
+ * Статистика (frmSt) — современный вид в общем оформлении экранов «Учёта» (vh-*).
+ *
+ * Фильтры — как на главной форме Access:
+ *   Вид (ПолеСоСписком24), Поиск (FindElem), Фирмы (f, мультивыбор через frmFndFirm 7),
+ *   WhatFirm, SkladManagers, даты PickDate/PickDate2 (только вид 1 при fltZ1 = 1),
+ *   Сырьё (TypeSel), «Заказ>0/Все» (fltZ1), ФЗ-275, состояние проблемы (fltStatProblEl, только вид 1).
  *
  * Колонки списка в Access задавала подформа frmMinimum, а их состав и ширину менял
  * fnRepaintFormStat при смене «Вида» (каждый режим — своя процедура xp_frmStNewRS…).
@@ -10,6 +15,9 @@
  * @var yii\web\View $this
  * @var app\modules\zakupki\models\StatFilter $filter
  * @var array $vids
+ * @var array $firms
+ * @var array $managers
+ * @var array $statuses
  * @var array $rows
  * @var string|null $error
  * @var string|null $note
@@ -28,136 +36,227 @@ $this->title = 'Статистика';
 $cols = StatService::columns($rows);
 
 $hasDateFilter = $filter->dateS || $filter->datePo;
+// PickDate/PickDate2 видны только в виде 1 при fltZ1 = 1 (Form_Load frmSt)
+$showDates = (string)$filter->vid === '1' && (int)$filter->fltZ1 === 1;
+$showStatus = (string)$filter->vid === '1';
+
 // Ссылки собираем от текущих значений фильтра, чтобы смена одного параметра не теряла остальные.
 // Пустые значения выбрасываем, иначе в адресе копятся «?fnd=&city=&post=…».
 $attrs = array_filter($filter->getAttributes(), static fn($v) => $v !== '' && $v !== null);
 $base = ['index'] + $attrs;
 $noDates = ['index'] + array_diff_key($attrs, ['dateS' => 1, 'datePo' => 1]);
 $noSort = ['index'] + array_merge($attrs, ['sort' => '', 'dir' => 'asc']);
+
+// Выбранные фирмы для мультивыбора: «%» — все
+$selFirms = $filter->f === '%' || $filter->f === ''
+    ? []
+    : array_filter(array_map('trim', explode(',', (string)$filter->f)), static fn($v) => $v !== '');
+
+$hasAllFirm = in_array(0, array_map('intval', array_column($firms, 'id')), true);
+$hasAllManager = in_array('%', array_column($managers, 'value'), true);
+$hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
 ?>
-<div class="st-modern">
-    <header class="st-head">
-        <div class="st-head-title">
+<div class="vh-stat">
+    <header class="vh-head">
+        <div class="vh-head-title">
             <h1>Статистика</h1>
-            <div class="st-sub">Строк: <b id="stCount"><?= count($rows) ?></b>
-                <span class="st-upd" id="stUpd" title="Список перечитывается сам каждые 9 минут, как в Access"></span>
+            <div class="vh-sub">Строк: <b id="stCount"><?= count($rows) ?></b>
+                <span class="vh-upd" id="stUpd" title="Список перечитывается сам каждые 9 минут, как в Access"></span>
             </div>
         </div>
-        <div class="st-head-actions">
-            <button type="button" class="st-btn" id="stRefresh" title="Перечитать список сейчас">⟳ Обновить</button>
-            <a class="st-btn" href="<?= Url::home() ?>" title="Закрыть (на главную)">✕ Закрыть</a>
+        <div class="vh-head-actions">
+            <button type="button" class="vh-btn" id="stRefresh" title="Перечитать список сейчас">⟳ Обновить</button>
+            <a class="vh-btn" href="<?= Url::home() ?>" title="Закрыть (на главную)">✕ Закрыть</a>
         </div>
     </header>
 
     <div id="stMsg">
         <?php foreach ($filter->getFirstErrors() as $e): ?>
-            <div class="st-alert"><?= Html::encode($e) ?></div>
+            <div class="vh-alert"><?= Html::encode($e) ?></div>
         <?php endforeach ?>
         <?php if ($error): ?>
-            <div class="st-alert"><?= Html::encode($error) ?></div>
+            <div class="vh-alert"><?= Html::encode($error) ?></div>
         <?php endif ?>
         <?php if ($note): ?>
-            <div class="st-note"><?= Html::encode($note) ?></div>
+            <div class="vh-note"><?= Html::encode($note) ?></div>
         <?php endif ?>
     </div>
 
-    <form method="get" action="<?= Url::to(['index']) ?>" id="frmSt" class="st-form">
+    <form method="get" action="<?= Url::to(['index']) ?>" id="frmSt" class="vh-form">
         <?= Html::hiddenInput('sort', $filter->sort) ?>
         <?= Html::hiddenInput('dir', $filter->dir) ?>
 
-        <section class="st-filters">
-            <div class="st-fgroup">
-                <div class="st-fgroup-t">Вид</div>
-                <div class="st-frow">
-                    <select class="st-inp" name="vid" onchange="this.form.submit()">
+        <section class="vh-filters">
+            <div class="vh-fgroup">
+                <div class="vh-fgroup-t">Вид</div>
+                <div class="vh-frow">
+                    <select class="vh-inp" name="vid" onchange="this.form.submit()">
                         <?php if (!$vids): ?>
                             <option value="<?= Html::encode($filter->vid) ?>"><?= Html::encode($filter->vid) ?></option>
                         <?php endif ?>
                         <?php foreach ($vids as $v): ?>
-                            <option value="<?= Html::encode($v['Num'] ?? '') ?>"
-                                <?= (string)($v['Num'] ?? '') === (string)$filter->vid ? 'selected' : '' ?>>
-                                <?= Html::encode($v['Name'] ?? '') ?>
+                            <option value="<?= Html::encode($v['num']) ?>"
+                                <?= (string)$v['num'] === (string)$filter->vid ? 'selected' : '' ?>>
+                                <?= Html::encode($v['name']) ?>
                             </option>
                         <?php endforeach ?>
                     </select>
                 </div>
             </div>
 
-            <div class="st-fgroup">
-                <div class="st-fgroup-t">Поиск</div>
-                <div class="st-frow">
-                    <input class="st-inp st-inp-w" type="text" name="fnd" maxlength="100"
+            <div class="vh-fgroup">
+                <div class="vh-fgroup-t">Поиск</div>
+                <div class="vh-frow">
+                    <input class="vh-inp vh-inp-w" type="text" name="fnd" maxlength="100"
                         value="<?= Html::encode($filter->fnd) ?>" placeholder="часть наименования"
                         title="Ищется по части текста, как FindElem в Access">
-                    <button type="submit" class="st-btn" title="Найти">🔍</button>
+                    <button type="submit" class="vh-btn" title="Найти">🔍</button>
                 </div>
             </div>
 
-            <div class="st-fgroup">
-                <div class="st-fgroup-t">Поставщик и город</div>
-                <div class="st-frow">
-                    <input class="st-inp st-inp-s" type="text" name="post" maxlength="100"
-                        value="<?= Html::encode($filter->post) ?>" placeholder="поставщик">
-                    <input class="st-inp st-inp-s" type="text" name="city" maxlength="100"
-                        value="<?= Html::encode($filter->city) ?>" placeholder="город">
+            <?php /* f: мультивыбор фирм, в Access — frmFndFirm (OpenArgs 7) → xp_frmStMultiSelectResult.
+                     Виден там же, где TypeSel: в fnRepaintFormStat для вида 7 скрыт вместе с WhatFirm/FndZac. */ ?>
+            <?php if (!$footer['is7']): ?>
+                <div class="vh-fgroup vh-fgroup-firms">
+                    <div class="vh-fgroup-t">Фирмы</div>
+                    <details class="vh-firm"<?= $selFirms ? ' open' : '' ?>>
+                        <summary title="Выбрать фирмы (в Access — кнопка «Выбрать фирму»)">
+                            <?= Html::encode($filter->firmTitle($firms)) ?>
+                        </summary>
+                        <div class="vh-firm-list">
+                            <label class="vh-check">
+                                <input type="checkbox" name="f[]" value="%" <?= $filter->f === '%' ? 'checked' : '' ?>>
+                                <span>Все</span>
+                            </label>
+                            <?php foreach ($firms as $fr): ?>
+                                <label class="vh-check">
+                                    <input type="checkbox" name="f[]" value="<?= Html::encode($fr['id']) ?>"
+                                        <?= in_array($fr['id'], $selFirms, true) ? 'checked' : '' ?>>
+                                    <span><?= Html::encode($fr['name']) ?></span>
+                                </label>
+                            <?php endforeach ?>
+                        </div>
+                    </details>
                 </div>
-            </div>
 
-            <div class="st-fgroup">
-                <div class="st-fgroup-t">Дата документа</div>
-                <div class="st-frow">
-                    <span class="st-lbl">с</span>
-                    <input class="st-inp" type="date" name="dateS" value="<?= Html::encode($filter->dateS) ?>">
-                    <span class="st-lbl">по</span>
-                    <input class="st-inp" type="date" name="datePo" value="<?= Html::encode($filter->datePo) ?>">
-                    <?php if ($hasDateFilter): ?>
-                        <a class="st-btn" href="<?= Url::to($noDates) ?>" title="Сбросить даты">✕</a>
-                    <?php endif ?>
+                <div class="vh-fgroup">
+                    <div class="vh-fgroup-t">Фирма (WhatFirm)</div>
+                    <div class="vh-frow">
+                        <select class="vh-inp" name="firm" onchange="this.form.submit()"
+                            title="WhatFirm: в Access скрыт в виде 7">
+                            <?php if (!$hasAllFirm): ?>
+                                <option value="0">Все</option>
+                            <?php endif ?>
+                            <?php foreach ($firms as $fr): ?>
+                                <option value="<?= Html::encode($fr['id']) ?>"
+                                    <?= (string)$fr['id'] === (string)$filter->firm ? 'selected' : '' ?>>
+                                    <?= Html::encode($fr['name']) ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
+                    </div>
                 </div>
-            </div>
+
+                <div class="vh-fgroup">
+                    <div class="vh-fgroup-t">Менеджер</div>
+                    <div class="vh-frow">
+                        <select class="vh-inp" name="manager" onchange="this.form.submit()"
+                            title="SkladManagers: ответственный и раскраска долгов">
+                            <?php if (!$hasAllManager): ?>
+                                <option value="%">Все</option>
+                            <?php endif ?>
+                            <?php foreach ($managers as $m): ?>
+                                <option value="<?= Html::encode($m['value']) ?>"
+                                    <?= (string)$m['value'] === (string)$filter->manager ? 'selected' : '' ?>>
+                                    <?= Html::encode($m['name']) ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
+                    </div>
+                </div>
+            <?php endif ?>
+
+            <?php /* PickDate/PickDate2: только вид 1 при fltZ1 = 1 (Form_Load frmSt) */ ?>
+            <?php if ($showDates): ?>
+                <div class="vh-fgroup">
+                    <div class="vh-fgroup-t">Дата документа</div>
+                    <div class="vh-frow">
+                        <span class="vh-lbl">с</span>
+                        <input class="vh-inp" type="date" name="dateS" value="<?= Html::encode($filter->dateS) ?>">
+                        <span class="vh-lbl">по</span>
+                        <input class="vh-inp" type="date" name="datePo" value="<?= Html::encode($filter->datePo) ?>">
+                        <?php if ($hasDateFilter): ?>
+                            <a class="vh-btn vh-btn-xs" href="<?= Url::to($noDates) ?>" title="Сбросить даты">✕</a>
+                        <?php endif ?>
+                    </div>
+                </div>
+            <?php endif ?>
 
             <?php /* TypeSel: в Access fnRepaintFormStat прячет фильтр «Сырьё» для вида 7 */ ?>
-            <div class="st-fgroup"<?= $footer['is7'] ? ' hidden' : '' ?>>
-                <div class="st-fgroup-t">Сырьё</div>
-                <label class="st-radio"><input type="radio" name="typeSel" value="1"
-                    <?= (int)$filter->typeSel === 1 ? 'checked' : '' ?> onchange="this.form.submit()">НЕ давальческое</label>
-                <label class="st-radio"><input type="radio" name="typeSel" value="2"
-                    <?= (int)$filter->typeSel === 2 ? 'checked' : '' ?> onchange="this.form.submit()">Давальческое</label>
-                <label class="st-radio"><input type="radio" name="typeSel" value="3"
-                    <?= (int)$filter->typeSel === 3 ? 'checked' : '' ?> onchange="this.form.submit()">Не важно</label>
+            <?php if (!$footer['is7']): ?>
+                <div class="vh-fgroup">
+                    <div class="vh-fgroup-t">Сырьё</div>
+                    <label class="vh-radio"><input type="radio" name="typeSel" value="1"
+                        <?= (int)$filter->typeSel === 1 ? 'checked' : '' ?> onchange="this.form.submit()"><span>НЕ давальческое</span></label>
+                    <label class="vh-radio"><input type="radio" name="typeSel" value="2"
+                        <?= (int)$filter->typeSel === 2 ? 'checked' : '' ?> onchange="this.form.submit()"><span>Давальческое</span></label>
+                    <label class="vh-radio"><input type="radio" name="typeSel" value="3"
+                        <?= (int)$filter->typeSel === 3 ? 'checked' : '' ?> onchange="this.form.submit()"><span>Не важно</span></label>
+                </div>
+            <?php endif ?>
+
+            <div class="vh-fgroup">
+                <div class="vh-fgroup-t">Заказ</div>
+                <label class="vh-radio"><input type="radio" name="fltZ1" value="1"
+                    <?= (int)$filter->fltZ1 === 1 ? 'checked' : '' ?> onchange="this.form.submit()"><span>Заказ&gt;0</span></label>
+                <label class="vh-radio"><input type="radio" name="fltZ1" value="0"
+                    <?= (int)$filter->fltZ1 === 0 ? 'checked' : '' ?> onchange="this.form.submit()"><span>Все</span></label>
             </div>
 
-            <div class="st-fgroup">
-                <div class="st-fgroup-t">Аналоги</div>
-                <label class="st-radio"><input type="radio" name="analog" value="0"
-                    <?= (int)$filter->analog === 0 ? 'checked' : '' ?> onchange="this.form.submit()">Обычные</label>
-                <label class="st-radio"><input type="radio" name="analog" value="1"
-                    <?= (int)$filter->analog === 1 ? 'checked' : '' ?> onchange="this.form.submit()">По аналогу</label>
-            </div>
+            <?php /* fltStatProblEl: Visible = (ПолеСоСписком24 = 1) в fltZ1_AfterUpdate */ ?>
+            <?php if ($showStatus): ?>
+                <div class="vh-fgroup">
+                    <div class="vh-fgroup-t">Состояние</div>
+                    <div class="vh-frow">
+                        <select class="vh-inp" name="fltStatProblEl" onchange="this.form.submit()"
+                            title="Состояние проблемы: в Access видно только в виде 1">
+                            <?php if (!$hasAllStatus): ?>
+                                <option value="255">Все</option>
+                            <?php endif ?>
+                            <?php foreach ($statuses as $s): ?>
+                                <option value="<?= (int)$s['id'] ?>"
+                                    <?= (int)$filter->fltStatProblEl === (int)$s['id'] ? 'selected' : '' ?>>
+                                    <?= Html::encode($s['name']) ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
+                    </div>
+                </div>
+            <?php endif ?>
 
-            <div class="st-fgroup">
-                <div class="st-fgroup-t">Прочее</div>
-                <label class="st-check"><input type="checkbox" name="fz275" value="1"
-                    <?= (int)$filter->fz275 === 1 ? 'checked' : '' ?> onchange="this.form.submit()">ФЗ-275</label>
-                <button type="submit" class="st-btn" title="Применить фильтры">Применить</button>
+            <div class="vh-fgroup">
+                <div class="vh-fgroup-t">Прочее</div>
+                <label class="vh-check"><input type="checkbox" name="fz275" value="1"
+                    <?= (int)$filter->fz275 === 1 ? 'checked' : '' ?> onchange="this.form.submit()"><span>ФЗ-275</span></label>
+                <button type="submit" class="vh-btn" title="Применить фильтры">Применить</button>
             </div>
         </section>
 
-        <section class="st-panel">
-            <div class="st-panel-head">
+        <section class="vh-panel">
+            <div class="vh-panel-head">
                 <span>Список элементов</span>
                 <?php if ($filter->sort !== ''): ?>
-                    <span class="st-tools">
+                    <span class="vh-tools">
                         Сортировка: <?= Html::encode(StatService::label($filter->sort)) ?>
                         <?= $filter->dir === 'desc' ? '▼' : '▲' ?>
-                        <a class="st-btn st-btn-xs" href="<?= Url::to($noSort) ?>"
+                        <a class="vh-btn vh-btn-xs" href="<?= Url::to($noSort) ?>"
                             title="Без сортировки (как в Access, когда все переключатели выключены)">✕</a>
                     </span>
                 <?php endif ?>
             </div>
 
-            <div class="st-list-scroll">
-                <table class="st-list" id="stList">
+            <div class="vh-list-scroll">
+                <table class="vh-list" id="stList">
                     <colgroup>
                         <?php foreach ($cols as [$f, , $w]): ?>
                             <col<?= $w ? ' style="width:' . (int)$w . 'px"' : '' ?>>
@@ -190,28 +289,28 @@ $noSort = ['index'] + array_merge($attrs, ['sort' => '', 'dir' => 'asc']);
               В Access граница правилась по двойному щелчку (InputBox), здесь — обычное поле:
               Enter или «Применить» перечитывает список с новыми Bnd/Razn/Kurs (Razn_AfterUpdate).
             */ ?>
-            <div class="st-foot">
+            <div class="vh-foot">
                 <?php if (!$footer['isB']): ?>
-                    <label class="st-foot-f">
+                    <label class="vh-foot-f">
                         <span><?= $footer['dl'] ? 'Граница, &#36;' : 'Граница, ₽' ?></span>
-                        <input class="st-inp st-inp-n" type="number" step="0.01" name="bnd"
+                        <input class="vh-inp vh-inp-n" type="number" step="0.01" name="bnd"
                             value="<?= Html::encode(number_format($footer['bnd'], 2, '.', '')) ?>"
                             title="Цена от этой границы выделяется в списке; в Access задавалась двойным щелчком">
                     </label>
                     <input type="hidden" name="dl" value="<?= (int)$footer['dl'] ?>">
 
-                    <label class="st-foot-f">
+                    <label class="vh-foot-f">
                         <span>Курс</span>
-                        <input class="st-inp st-inp-n" type="text" name="kurs"
+                        <input class="vh-inp vh-inp-n" type="text" name="kurs"
                             value="<?= Html::encode(number_format($footer['kurs'], 4, '.', '')) ?>" readonly
                             title="Курс доллара на экране учёта (Forms!frmUchet!KursUSD)">
                     </label>
                 <?php endif ?>
 
                 <?php if ($footer['is7']): ?>
-                    <label class="st-foot-f">
+                    <label class="vh-foot-f">
                         <span>Разница</span>
-                        <input class="st-inp st-inp-n" type="number" step="0.01" name="razn"
+                        <input class="vh-inp vh-inp-n" type="number" step="0.01" name="razn"
                             value="<?= Html::encode(number_format($footer['razn'], 2, '.', '')) ?>"
                             title="Разница цены для вида 7">
                     </label>
@@ -220,39 +319,39 @@ $noSort = ['index'] + array_merge($attrs, ['sort' => '', 'dir' => 'asc']);
                 <?php endif ?>
 
                 <?php if ($footer['warn']): ?>
-                    <span class="st-foot-warn" title="Вид 1 учитывает тех.запас, остальные — нет">Выборка без учёта тех.запаса</span>
+                    <span class="vh-foot-warn" title="Вид 1 учитывает тех.запас, остальные — нет">Выборка без учёта тех.запаса</span>
                 <?php endif ?>
 
-                <button type="submit" class="st-btn" title="Перечитать список с новыми значениями">Применить</button>
+                <button type="submit" class="vh-btn" title="Перечитать список с новыми значениями">Применить</button>
             </div>
             <?php /* Descr в frmSt: подсказка по колонке, на которой стоит курсор */ ?>
-            <div class="st-hint" id="stHint" role="status" aria-live="polite"></div>
+            <div class="vh-stat-hint" id="stHint" role="status" aria-live="polite"></div>
         </section>
     </form>
 
-    <section class="st-panel st-an">
-        <div class="st-panel-head">
-            <span>Аналоги <span class="st-an-code" id="stAnCode"></span></span>
-            <span class="st-tools" id="stAnInfo">выберите строку в списке</span>
+    <section class="vh-panel vh-an">
+        <div class="vh-panel-head">
+            <span>Аналоги <span class="vh-an-code" id="stAnCode"></span></span>
+            <span class="vh-tools" id="stAnInfo">выберите строку в списке</span>
         </div>
-        <div class="st-list-scroll st-an-scroll" id="stAnBox"></div>
+        <div class="vh-list-scroll vh-an-scroll" id="stAnBox"></div>
     </section>
 
     <?php /* Диалог текста: frmShowPrim (ветки 58/81/83) — примечание элемента, комментарий производства, просмотр */ ?>
-    <div class="st-dlg" id="stDlg" hidden>
-        <div class="st-dlg-box" role="dialog" aria-modal="true" aria-labelledby="stDlgT">
-            <div class="st-dlg-head">
+    <div class="vh-sdlg" id="stDlg" hidden>
+        <div class="vh-sdlg-box" role="dialog" aria-modal="true" aria-labelledby="stDlgT">
+            <div class="vh-sdlg-head">
                 <span id="stDlgT"></span>
-                <button type="button" class="st-btn st-btn-xs" id="stDlgX" title="Закрыть">✕</button>
+                <button type="button" class="vh-btn vh-btn-xs" id="stDlgX" title="Закрыть">✕</button>
             </div>
-            <div class="st-dlg-body">
+            <div class="vh-sdlg-body">
                 <textarea id="stDlgText" spellcheck="false"></textarea>
                 <select id="stDlgSel" size="12" hidden></select>
             </div>
-            <div class="st-dlg-foot">
-                <span class="st-dlg-msg" id="stDlgMsg"></span>
-                <button type="button" class="st-btn" id="stDlgOk">Сохранить</button>
-                <button type="button" class="st-btn" id="stDlgNo">Закрыть</button>
+            <div class="vh-sdlg-foot">
+                <span class="vh-sdlg-msg" id="stDlgMsg"></span>
+                <button type="button" class="vh-btn" id="stDlgOk">Сохранить</button>
+                <button type="button" class="vh-btn" id="stDlgNo">Закрыть</button>
             </div>
         </div>
     </div>
@@ -260,105 +359,125 @@ $noSort = ['index'] + array_merge($attrs, ['sort' => '', 'dir' => 'asc']);
 
 <?php
 $this->registerCss(<<<'CSS'
-.st-modern { --st-blue:#40B3D8; --st-blue-d:#2f8baa; --st-blue-l:#eaf7fc; --st-blue-b:#c5e7f2; --st-ink:#1b5c72;
+.vh-stat { --vh-blue:#40B3D8; --vh-blue-d:#2f8baa; --vh-blue-l:#eaf7fc; --vh-blue-b:#c5e7f2; --vh-ink:#1b5c72;
     background:#f4fafc; padding:.4rem .7rem .6rem; box-sizing:border-box;
     font:12px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; color:#20414d; min-height:calc(100vh - 92px); }
-#main > .container.st-wide { max-width:100%; width:100%; padding-left:.4rem; padding-right:.4rem; }
+#main > .container.vh-wide { max-width:100%; width:100%; padding-left:.4rem; padding-right:.4rem; }
 
-.st-head { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem 1rem; padding:.35rem .7rem;
-    margin:-.4rem -.7rem .4rem; background:#fff; border-bottom:3px solid var(--st-blue); }
-.st-head-title h1 { margin:0; color:var(--st-ink); font-size:1rem; font-weight:600; }
-.st-sub { font-size:.72rem; color:#5b8598; margin-top:.1rem; }
-.st-upd { margin-left:.4rem; color:#7d9aa7; }
-.st-head-actions { display:flex; align-items:center; gap:.3rem; margin-left:auto; }
+/* Шапка: название и число строк слева, кнопки справа */
+.vh-head { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem 1rem; padding:.35rem .7rem;
+    margin:-.4rem -.7rem .4rem; background:#fff; border-bottom:3px solid var(--vh-blue); }
+.vh-head-title h1 { margin:0; color:var(--vh-ink); font-size:1rem; font-weight:600; }
+.vh-sub { font-size:.72rem; color:#5b8598; margin-top:.1rem; }
+.vh-upd { margin-left:.4rem; color:#7d9aa7; }
+.vh-head-actions { display:flex; align-items:center; gap:.3rem; margin-left:auto; }
 
-.st-alert { background:#fdecec; color:#a4232b; border:1px solid #f5c2c7; border-radius:.4rem;
+.vh-alert { background:#fdecec; color:#a4232b; border:1px solid #f5c2c7; border-radius:.4rem;
     padding:.25rem .6rem; margin-bottom:.4rem; }
-.st-note { background:#fff8e6; color:#7a5a00; border:1px solid #f0dfa8; border-radius:.4rem;
+.vh-note { background:#fff8e6; color:#7a5a00; border:1px solid #f0dfa8; border-radius:.4rem;
     padding:.25rem .6rem; margin-bottom:.4rem; }
 
-.st-filters { display:flex; flex-wrap:wrap; gap:.4rem; align-items:stretch; margin-bottom:.4rem; }
-.st-fgroup { background:#fff; border:1px solid var(--st-blue-b); border-radius:.5rem; padding:.3rem .55rem .4rem;
+/* Фильтры: группы «подпись + поле», переносятся по ширине */
+.vh-form { display:block; }
+.vh-filters { display:flex; flex-wrap:wrap; gap:.4rem; align-items:stretch; margin-bottom:.4rem; }
+.vh-fgroup { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.5rem; padding:.3rem .55rem .4rem;
     box-shadow:0 1px 3px rgba(64,179,216,.10); }
-.st-fgroup-t { color:var(--st-ink); font-weight:600; font-size:.68rem; text-transform:uppercase;
+.vh-fgroup-t { color:var(--vh-ink); font-weight:600; font-size:.68rem; text-transform:uppercase;
     letter-spacing:.03em; margin-bottom:.25rem; }
-.st-frow { display:flex; align-items:center; flex-wrap:wrap; gap:.3rem; }
-.st-lbl { font-size:.72rem; color:#5b8598; white-space:nowrap; }
-.st-check, .st-radio { display:inline-flex; align-items:center; gap:.3rem; font-size:.78rem;
+.vh-frow { display:flex; align-items:center; flex-wrap:wrap; gap:.3rem; }
+.vh-lbl { font-size:.72rem; color:#5b8598; white-space:nowrap; }
+.vh-check, .vh-radio { display:inline-flex; align-items:center; gap:.3rem; font-size:.78rem;
     cursor:pointer; white-space:nowrap; margin:0 .8rem 0 0; }
-.st-check input, .st-radio input { accent-color:var(--st-blue); margin:0; }
+.vh-check input, .vh-radio input { accent-color:var(--vh-blue); margin:0; }
+.vh-check input:disabled + span { color:#9db9c4; }
 
-.st-btn { display:inline-flex; align-items:center; justify-content:center; gap:.25rem; min-height:24px; padding:0 .55rem;
-    background:#fff; border:1px solid var(--st-blue-b); border-radius:.3rem; color:var(--st-ink);
+/* Мультивыбор фирм: свёрнутый список с чекбоксами */
+.vh-firm { position:relative; }
+.vh-firm > summary { cursor:pointer; color:var(--vh-ink); font-size:.78rem; max-width:220px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.vh-firm > summary::marker { color:var(--vh-blue); }
+.vh-firm-list { position:absolute; z-index:20; margin-top:.25rem; min-width:220px; max-width:320px; max-height:260px;
+    overflow:auto; background:#fff; border:1px solid var(--vh-blue-b); border-radius:.4rem;
+    box-shadow:0 8px 24px rgba(27,92,114,.18); padding:.3rem .45rem; }
+.vh-firm-list .vh-check { display:flex; margin:0; padding:.08rem 0; }
+
+/* Кнопки и поля — в корпоративных цветах */
+.vh-btn { display:inline-flex; align-items:center; justify-content:center; gap:.25rem; min-height:24px; padding:0 .55rem;
+    background:#fff; border:1px solid var(--vh-blue-b); border-radius:.3rem; color:var(--vh-ink);
     font:600 .72rem/1 system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; cursor:pointer;
     white-space:nowrap; text-decoration:none; }
-.st-btn:hover { background:var(--st-blue); border-color:var(--st-blue); color:#fff; }
-.st-btn-xs { min-height:20px; padding:0 .35rem; font-size:.72rem; }
-.st-inp { height:24px; padding:0 .35rem; border:1px solid var(--st-blue-b); border-radius:.25rem;
+.vh-btn:hover:not(:disabled) { background:var(--vh-blue); border-color:var(--vh-blue); color:#fff; }
+.vh-btn:disabled { background:#f7fbfd; border-color:#e3f0f5; color:#9db9c4; cursor:default; }
+.vh-btn-xs { min-height:20px; padding:0 .35rem; font-size:.72rem; }
+.vh-inp { height:24px; padding:0 .35rem; border:1px solid var(--vh-blue-b); border-radius:.25rem;
     background:#fff; color:#20414d; font:12px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; box-sizing:border-box; }
-.st-inp:focus { outline:none; border-color:var(--st-blue); box-shadow:0 0 0 2px rgba(64,179,216,.22); }
-.st-inp-w { width:180px; } .st-inp-s { width:130px; } .st-inp-n { width:96px; text-align:right; }
+.vh-inp:focus { outline:none; border-color:var(--vh-blue); box-shadow:0 0 0 2px rgba(64,179,216,.22); }
+.vh-inp:read-only { background:#fbfdfe; }
+.vh-inp-w { width:180px; } .vh-inp-n { width:96px; text-align:right; }
+input[type=date].vh-inp { padding:0 .2rem; }
 
-.st-panel { background:#fff; border:1px solid var(--st-blue-b); border-radius:.5rem;
+/* Панели списка и аналогов */
+.vh-panel { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.5rem;
     box-shadow:0 1px 3px rgba(64,179,216,.12); overflow:hidden; }
-.st-panel-head { display:flex; align-items:center; justify-content:space-between; gap:.5rem;
-    padding:.22rem .6rem; background:var(--st-blue-l); border-bottom:1px solid var(--st-blue-b);
-    color:var(--st-ink); font-weight:600; font-size:.68rem; text-transform:uppercase; letter-spacing:.03em; }
-.st-tools { display:flex; align-items:center; gap:.35rem; text-transform:none; letter-spacing:0; font-weight:400; }
+.vh-panel-head { display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+    padding:.22rem .6rem; background:var(--vh-blue-l); border-bottom:1px solid var(--vh-blue-b);
+    color:var(--vh-ink); font-weight:600; font-size:.68rem; text-transform:uppercase; letter-spacing:.03em; }
+.vh-tools { display:flex; align-items:center; gap:.35rem; text-transform:none; letter-spacing:0; font-weight:400; }
 
-.st-list-scroll { overflow:auto; max-height:calc(100vh - 300px); }
-.st-list { border-collapse:collapse; width:100%; font-size:12px; }
-.st-list th { position:sticky; top:0; z-index:1; background:var(--st-blue-l); color:var(--st-ink);
+.vh-list-scroll { overflow:auto; max-height:calc(100vh - 330px); }
+.vh-list { border-collapse:collapse; width:100%; font-size:12px; }
+.vh-list th { position:sticky; top:0; z-index:1; background:var(--vh-blue-l); color:var(--vh-ink);
     font-weight:600; font-size:.68rem; text-transform:uppercase; letter-spacing:.02em;
-    padding:.2rem .35rem; border:1px solid var(--st-blue-b); white-space:nowrap; text-align:left; }
-.st-list th a { color:inherit; text-decoration:none; }
-.st-list th.asc::after { content:' ▲'; } .st-list th.desc::after { content:' ▼'; }
-.st-list td { padding:.12rem .35rem; border-bottom:1px solid #e6f2f7;
+    padding:.2rem .35rem; border:1px solid var(--vh-blue-b); white-space:nowrap; text-align:left; }
+.vh-list th a { color:inherit; text-decoration:none; }
+.vh-list th.asc::after { content:' ▲'; } .vh-list th.desc::after { content:' ▼'; }
+.vh-list td { padding:.12rem .35rem; border-bottom:1px solid #e6f2f7;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:420px; }
-.st-list tbody tr { cursor:default; }
-.st-list tbody tr:hover td { background:#f4fafc; }
+.vh-list tbody tr { cursor:default; }
+.vh-list tbody tr:hover:not(.sel) td { background:#f4fafc; }
 /* Текущая запись: в Access OnCurrent красит строку по Код = CurKd */
-.st-list tbody tr.st-cur td { background:#d6ecf7; }
-.st-empty { color:#7d9aa7; font-style:italic; padding:.5rem .6rem !important; }
+.vh-list tbody tr.sel td { background:#d6ecf7; box-shadow:inset 3px 0 var(--vh-blue); }
+.vh-list .empty { color:#7d9aa7; font-style:italic; padding:.5rem .6rem !important; }
+.empty { color:#7d9aa7; font-style:italic; padding:.5rem .6rem; }
 
 /* Футер frmMinimum: граница цены, курс, разница, «без тех.запаса» */
-.st-foot { display:flex; align-items:center; flex-wrap:wrap; gap:.3rem .8rem;
-    padding:.3rem .6rem; background:var(--st-blue-l); border-top:1px solid var(--st-blue-b); }
-.st-foot-f { display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem; color:var(--st-ink); margin:0; }
-.st-foot-f > span { white-space:nowrap; }
-.st-foot-warn { color:#c05a00; font-size:.72rem; font-weight:600; }
+.vh-foot { display:flex; align-items:center; flex-wrap:wrap; gap:.3rem .8rem;
+    padding:.3rem .6rem; background:var(--vh-blue-l); border-top:1px solid var(--vh-blue-b); }
+.vh-foot-f { display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem; color:var(--vh-ink); margin:0; }
+.vh-foot-f > span { white-space:nowrap; }
+.vh-foot-warn { color:#c05a00; font-size:.72rem; font-weight:600; }
 
 /* Строка подсказки под списком (в Access — Descr.Caption главной формы frmSt) */
-.st-hint { min-height:22px; padding:.15rem .6rem; background:#fbfeff; border-top:1px solid #e6f2f7;
+.vh-stat-hint { min-height:22px; padding:.15rem .6rem; background:#fbfeff; border-top:1px solid #e6f2f7;
     color:#3f6d80; font-size:.72rem; line-height:1.35; }
-.st-hint:empty::before { content:'Наведите курсор на ячейку — появится подсказка о цветах и обозначениях'; color:#9db9c4; }
+.vh-stat-hint:empty::before { content:'Наведите курсор на ячейку — появится подсказка о цветах и обозначениях'; color:#9db9c4; }
 
 /* Подформа аналогов (subFrmStAnalog): свой заголовок и полоса прокрутки */
-.st-an { margin-top:.4rem; }
-.st-an-code { text-transform:none; letter-spacing:0; font-weight:400; color:#5b8598; }
-.st-an-scroll { max-height:220px; min-height:34px; padding:.1rem .2rem; }
+.vh-an { margin-top:.4rem; }
+.vh-an-code { text-transform:none; letter-spacing:0; font-weight:400; color:#5b8598; }
+.vh-an-scroll { max-height:220px; min-height:34px; padding:.1rem .2rem; }
 
 /* Диалог текста (frmShowPrim): примечание, комментарий, выбор состояния */
-.st-dlg { position:fixed; inset:0; z-index:1050; display:flex; align-items:center; justify-content:center;
+.vh-sdlg { position:fixed; inset:0; z-index:1050; display:flex; align-items:center; justify-content:center;
     background:rgba(27,92,114,.28); }
-.st-dlg[hidden] { display:none; }
-.st-dlg-box { width:min(560px,94vw); background:#fff; border:1px solid var(--st-blue-b); border-radius:.5rem;
+.vh-sdlg[hidden] { display:none; }
+.vh-sdlg-box { width:min(560px,94vw); background:#fff; border:1px solid var(--vh-blue-b); border-radius:.5rem;
     box-shadow:0 12px 32px rgba(27,92,114,.28); display:flex; flex-direction:column; }
-.st-dlg-head { display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.3rem .6rem;
-    background:var(--st-blue-l); border-bottom:1px solid var(--st-blue-b); color:var(--st-ink); font-weight:600; }
-.st-dlg-body { padding:.5rem .6rem; }
-.st-dlg-body textarea { width:100%; height:150px; box-sizing:border-box; resize:vertical; padding:.3rem .4rem;
-    border:1px solid var(--st-blue-b); border-radius:.3rem; font:12px/1.45 system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;
+.vh-sdlg-head { display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.3rem .6rem;
+    background:var(--vh-blue-l); border-bottom:1px solid var(--vh-blue-b); color:var(--vh-ink); font-weight:600; }
+.vh-sdlg-body { padding:.5rem .6rem; }
+.vh-sdlg-body textarea { width:100%; height:150px; box-sizing:border-box; resize:vertical; padding:.3rem .4rem;
+    border:1px solid var(--vh-blue-b); border-radius:.3rem; font:12px/1.45 system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;
     color:#20414d; }
-.st-dlg-body textarea:focus, .st-dlg-body select:focus { outline:none; border-color:var(--st-blue); box-shadow:0 0 0 2px rgba(64,179,216,.22); }
-.st-dlg-body select { width:100%; border:1px solid var(--st-blue-b); border-radius:.3rem;
+.vh-sdlg-body textarea:focus, .vh-sdlg-body select:focus { outline:none; border-color:var(--vh-blue); box-shadow:0 0 0 2px rgba(64,179,216,.22); }
+.vh-sdlg-body select { width:100%; border:1px solid var(--vh-blue-b); border-radius:.3rem;
     font:12px system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; color:#20414d; }
-.st-dlg-foot { display:flex; align-items:center; gap:.35rem; padding:.35rem .6rem;
-    background:var(--st-blue-l); border-top:1px solid var(--st-blue-b); }
-.st-dlg-msg { margin-right:auto; color:#a4232b; }
-.st-dlg-msg.ok { color:#1b7a3d; }
+.vh-sdlg-foot { display:flex; align-items:center; gap:.35rem; padding:.35rem .6rem;
+    background:var(--vh-blue-l); border-top:1px solid var(--vh-blue-b); }
+.vh-sdlg-msg { margin-right:auto; color:#a4232b; }
+.vh-sdlg-msg.ok { color:#1b7a3d; }
 
-@media (max-width:1199.98px) { .st-list-scroll { max-height:none; } }
+@media (max-width:1199.98px) { .vh-list-scroll { max-height:none; } }
 CSS);
 
 $this->registerJs('window.ST = ' . Json::encode([
@@ -387,7 +506,7 @@ $this->registerJs(<<<'JS'
     if (!tbl || !cfg.rowsUrl) return;
 
     const body   = tbl.tBodies[0];
-    const scroll = tbl.closest('.st-list-scroll');
+    const scroll = tbl.closest('.vh-list-scroll');
     const count  = document.getElementById('stCount');
     const upd    = document.getElementById('stUpd');
     const msg    = document.getElementById('stMsg');
@@ -400,7 +519,7 @@ $this->registerJs(<<<'JS'
 
     const setCur = code => {
         cur = code || '';
-        [...body.rows].forEach(tr => tr.classList.toggle('st-cur', !!cur && tr.dataset.code === cur));
+        [...body.rows].forEach(tr => tr.classList.toggle('sel', !!cur && tr.dataset.code === cur));
         loadAnalogs(cur);
     };
 
@@ -435,7 +554,7 @@ $this->registerJs(<<<'JS'
             if (cur !== code) return;
             if (info) info.textContent = '';
             const x = document.createElement('div');
-            x.className = 'st-alert';
+            x.className = 'vh-alert';
             x.textContent = 'Не удалось получить аналоги: ' + e.message;
             box.replaceChildren(x);
         }
@@ -677,8 +796,8 @@ $this->registerJs(<<<'JS'
             if (count) count.textContent = d.count ?? 0;
             if (msg) {
                 const box = el => { const x = document.createElement('div'); x.className = el.cls; x.textContent = el.text; return x; };
-                msg.replaceChildren(...[d.error && box({ cls: 'st-alert', text: d.error }),
-                                        d.note && box({ cls: 'st-note', text: d.note })].filter(Boolean));
+                msg.replaceChildren(...[d.error && box({ cls: 'vh-alert', text: d.error }),
+                                        d.note && box({ cls: 'vh-note', text: d.note })].filter(Boolean));
             }
             setCur(cur);                                 // вернулись к той же записи по Код
             const tr = cur ? [...body.rows].find(r => r.dataset.code === cur) : null;
@@ -689,7 +808,7 @@ $this->registerJs(<<<'JS'
         } catch (e) {
             if (msg) {
                 const x = document.createElement('div');
-                x.className = 'st-alert';
+                x.className = 'vh-alert';
                 x.textContent = 'Не удалось обновить список: ' + e.message;
                 msg.replaceChildren(x);
             }
@@ -713,9 +832,22 @@ $this->registerJs(<<<'JS'
 })();
 JS, \yii\web\View::POS_END);
 
-// Экран на всю ширину окна
+// Экран на всю ширину окна + «Все» и конкретные фирмы в мультивыборе исключают друг друга
 $this->registerJs(<<<'JS'
-document.getElementById('main')?.querySelector(':scope > .container')?.classList.add('st-wide');
+document.getElementById('main')?.querySelector(':scope > .container')?.classList.add('vh-wide');
+
+(function () {
+    const boxes = [...document.querySelectorAll('input[name="f[]"]')];
+    const all = boxes.find(b => b.value === '%');
+    if (!all) return;
+    boxes.forEach(cb => cb.addEventListener('change', () => {
+        if (cb === all && cb.checked) {
+            boxes.forEach(o => { if (o !== all) o.checked = false; });
+        } else if (cb !== all && cb.checked) {
+            all.checked = false;
+        }
+    }));
+})();
 JS, \yii\web\View::POS_END);
 
 echo $this->render('@app/views/access/_help');

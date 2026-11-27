@@ -19,7 +19,7 @@ $bnd = (float)($bnd ?? 0);
 
 if (!$rows): ?>
     <tr>
-        <td class="st-empty" colspan="<?= max(1, count($cols)) ?>"><?= Html::encode($empty) ?></td>
+        <td class="empty" colspan="<?= max(1, count($cols)) ?>"><?= Html::encode($empty) ?></td>
     </tr>
 <?php endif ?>
 <?php foreach ($rows as $r):
