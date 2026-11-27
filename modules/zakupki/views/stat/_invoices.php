@@ -15,6 +15,7 @@
  * @var string|null $error
  */
 
+use app\modules\zakupki\services\InvoiceColumns;
 use yii\helpers\Html;
 
 /** Дата Access dd.mm.yy из 'YYYY-MM-DD hh:mm:ss'. */
@@ -33,6 +34,12 @@ $num = static function ($v): string {
     $s = number_format((float)$v, 2, ',', ' ');
     $s = rtrim(rtrim($s, '0'), ',');
     return $s === '' || $s === '-' ? '0' : $s;
+};
+
+/** CheckBox Access: «В расчёт», «Активный» — 0/1, «Проект» — [ProjectPrice]>0. */
+$chk = static function ($v): string {
+    $on = is_numeric($v) ? (float)$v > 0 : !empty($v);
+    return '<input type="checkbox" class="vh-chk" disabled' . ($on ? ' checked' : '') . '>';
 };
 
 if ($error): ?>
@@ -61,17 +68,10 @@ if ($error): ?>
                 <?php foreach ($cols as [$f, , , $right]):
                     $v = $r[$f] ?? '';
                     $style = $right ? 'text-align:right' : '';
-                    $text = '';
 
-                    if (in_array($f, ['InPivot', 'AnalogActive'], true)) {
-                        // CheckBox в Access: значение 0/1
-                        $on = !empty($v);
-                        $text = '<input type="checkbox" class="vh-chk" disabled' . ($on ? ' checked' : '') . '>';
-                    } elseif ($f === 'ProjectPrice') {
-                        // CheckBox с источником =[ProjectPrice]>0
-                        $on = (float)$v > 0;
-                        $text = '<input type="checkbox" class="vh-chk" disabled' . ($on ? ' checked' : '') . '>';
-                    } elseif (in_array($f, ['DtaAdv', 'DC'], true)) {
+                    if (in_array($f, InvoiceColumns::CHECKBOX, true)) {
+                        $text = $chk($v);
+                    } elseif (in_array($f, InvoiceColumns::DATES, true)) {
                         $text = Html::encode($dmy($v));
                     } elseif ($right) {
                         $text = Html::encode($num($v));

@@ -38,6 +38,9 @@ use yii\helpers\Json;
 use yii\helpers\Url;
 
 $this->title = 'Статистика';
+// Контейнер макета — во всю ширину окна (класс vh-wide ставит views/layouts/main.php
+// ещё на сервере: иначе страница сначала рисуется узкой и «разворачивается» скриптом).
+$this->params['wide'] = true;
 
 // Колонки — по первой строке результата: состав у каждого вида свой.
 // Подписи и видимость части колонок зависят от вида (fnRepaintFormStat) — см. StatColumns.
@@ -1303,13 +1306,15 @@ $this->registerJs(<<<'JS'
         if (upd) upd.textContent = 'обновлено ' + p(d.getHours()) + ':' + p(d.getMinutes());
     };
 
-    async function refresh() {
+    async function refresh(silent) {
         if (busy) return;
         busy = true;
         if (btn) btn.disabled = true;
         const top = scroll ? scroll.scrollTop : 0;
         try {
-            const r = await fetch(cfg.rowsUrl + location.search, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            // Фоновое обновление по таймеру не показывает окно «система занята»
+            const r = await fetch(cfg.rowsUrl + location.search,
+                { headers: { 'X-Requested-With': 'XMLHttpRequest' }, busy: silent ? false : undefined });
             if (!r.ok) throw new Error('HTTP ' + r.status);
             const d = await r.json();
             body.innerHTML = d.html || '';
@@ -1344,19 +1349,17 @@ $this->registerJs(<<<'JS'
     setInterval(() => {
         if (document.hidden) return;
         if (Date.now() - last < period - 1000) return;
-        refresh();
+        refresh(true);
     }, 30000);
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && Date.now() - last >= period) refresh();
+        if (!document.hidden && Date.now() - last >= period) refresh(true);
     });
     if (btn) btn.addEventListener('click', refresh);
 })();
 JS, \yii\web\View::POS_END);
 
-// Экран на всю ширину окна + «Все» и конкретные фирмы в мультивыборе исключают друг друга
+// «Все» и конкретные фирмы в мультивыборе исключают друг друга
 $this->registerJs(<<<'JS'
-document.getElementById('main')?.querySelector(':scope > .container')?.classList.add('vh-wide');
-
 /**
  * Кнопка «Даты» — GetInt_Click формы frmSt: открывает frmGetInterval (interval.js),
  * полученные даты кладёт в PickDate/PickDate2 и сразу перечитывает список

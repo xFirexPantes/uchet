@@ -17,6 +17,9 @@ use yii\helpers\Html;
 use yii\helpers\Url;
 
 $this->title = 'Входящие счета';
+// Контейнер макета — во всю ширину окна (класс vh-wide ставит views/layouts/main.php
+// ещё на сервере: иначе список сначала рисуется узким и «разворачивается» скриптом).
+$this->params['wide'] = true;
 $oneSch = $filter->id > 0;                                                  // открыта на один счёт (OpenArgs)
 $filterApplied = $filter->dateS || $filter->datePo || $filter->nsch !== '' || (string)$filter->firma !== '';  // как IsApplyFlt
 ?>
@@ -379,7 +382,7 @@ $this->registerCss(<<<'CSS'
 .vh-money .vh-lbl { text-align:right; }
 .vh-money .vh-inp { text-align:right; }
 
-/* Экран на всю ширину окна: контейнер макета расширяет скрипт (класс vh-wide) */
+/* Экран на всю ширину окна: контейнер макета расширяет класс vh-wide (views/layouts/main.php) */
 #main > .container.vh-wide { max-width:100%; width:100%; padding-left:.4rem; padding-right:.4rem; }
 .vh-schet { min-height:calc(100vh - 92px); }
 
@@ -447,13 +450,8 @@ input[type=date].vh-inp { padding:0 .2rem; }
 }
 CSS);
 
-// Экран на всю ширину окна и окно подсказки: открытие кнопкой «? Цвета», закрытие — ✕, щелчок по фону, Esc
+// Окно подсказки: открытие кнопкой «? Цвета», закрытие — ✕, щелчок по фону, Esc
 $this->registerJs(<<<'JS'
-// Убираем ограничение ширины контейнера макета (max-width из Bootstrap) — экран на всё окно.
-// Ширины столбцов списка пересчитываем после этого: таблица растягивается на новую ширину.
-document.getElementById('main')?.querySelector(':scope > .container')?.classList.add('vh-wide');
-requestAnimationFrame(() => document.getElementById('vhList')?._vhFit?.());
-
 (function () {
     const box = document.getElementById('vhHints');
     if (!box) return;

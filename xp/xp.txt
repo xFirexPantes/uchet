@@ -4902,3 +4902,103 @@ er:
 MsgBox Err.Number & vbCrLf & Err.Description
 Resume ex
 End Function
+
+USE [TrxSQL]
+GO
+/****** Объект:  StoredProcedure [dbo].[xp_SubFrmStatSch]    Дата создания скрипта: 27.11.2026 17:27:18 ******/ 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/* источник данных для формы SubFrmStatSch (в frmSt) */
+ALTER PROCEDURE [dbo].[xp_SubFrmStatSch]
+(@txtID int=0,@Rgm varchar(2)='')
+AS 
+BEGIN
+SET NOCOUNT ON;
+if @Rgm = 'b' begin
+--ТЗ 630 (расширенное) (23.01.24)
+	--SELECT     dbo.tblPredShceta.НомерСчета, dbo.tblPredShceta.ДатаСчета, dbo.tblSchEl.Количество, 
+ --                     dbo.tblSchEl.Количество - ISNULL(qAll.Kol, 0) AS Недополучено, dbo.tblSchEl.СрокПоставки, 
+ --                     dbo.tblPredShceta.Организация + CASE WHEN dbo.tblSchEl.NmeCat is null THEN '' ELSE ' (' + dbo.tblSchEl.NmeCat + ')' END as Организация, 
+ --                     --
+ --                     dbo.tblPredShceta.TP AS Покупатель, dbo.tblPredShceta.PredShcID,  
+ --                     dbo.tblSchEl.AllID, dbo.tblSchEl.FirstSrokPost,CASE WHEN dbo.tblSchEl.IsProblem=1 THEN 'Да' Else '' END as Probl,
+ --                     CASE WHEN right(dbo.tblPredShceta.НомерСчета,8)='(Детали)' THEN 'Det' ELSE 'El' END as Tip,dbo.tblSchEl.IsProblem,
+ --                     --по ТЗ 545 Маслюкова (29.11.22)
+ --                     dbo.tblSchEl.OverrideProblem,
+ --                     ISNULL(qAll.Kol, 0) as Arrived,
+ --                     qWarranty.ProductDate,qWarranty.WarrantySrok,
+	--					case when qWarranty.WarrantyDate>0 THEN CONVERT(char(10),qWarranty.WarrantyDate,104) ELSE '' END + CASE WHEN qWarranty.FWarrantyDate>0 THEN '('+CONVERT(char(10),qWarranty.FWarrantyDate,104) + ')' ELSE '' END as [WarrantyDate],
+	--					case when dbo.tblAllWarrantyExpired.IDAll>0 THEN 255 ELSE 0 END as WarrantyExpired,
+ --                      0 as Srt
+	--FROM         dbo.tblPredShceta WITH (NOLOCK) 
+	--INNER JOIN dbo.tblSchEl WITH (NOLOCK) ON dbo.tblPredShceta.PredShcID = dbo.tblSchEl.ShcID
+	--LEFT OUTER JOIN 
+	--(SELECT SUM(dbo.tblAll.Количество) as Kol,IDSchEl FROM dbo.tblAll WITH (NOLOCK)
+	--GROUP BY dbo.tblAll.IDSchEl) as qAll ON dbo.tblSchEl.AllID = qAll.IDSchEl 
+	--WHERE      (dbo.tblSchEl.SkladID = @txtID)
+	
+	
+	
+	exec dbo.xp_HistoryElem @txtID,2,0,0,''
+	
+	
+	
+	--UNION ALL
+	--SELECT 
+	--'' as НомерСчета,Null as ДатаСчета,dbo.tblAll.Количество,Null as Недополучено,dbo.tblShceta.ДатаНакладной,
+	--'' as Организация,
+	--'' AS Покупатель,-dbo.tblShceta.ShcID as PredShcID,
+	--dbo.tblSchEl.AllID, Null as FirstSrokPost,CASE WHEN dbo.tblSchEl.IsProblem=1 THEN 'Да' Else '' END as Probl,
+	--CASE WHEN right(dbo.tblPredShceta.НомерСчета,8)='(Детали)' THEN 'Det' ELSE 'El' END as Tip,dbo.tblSchEl.IsProblem,
+	----по ТЗ 545 Маслюкова (29.11.22)
+	--dbo.tblSchEl.OverrideProblem,
+	--dbo.tblAll.Количество as Arrived,
+	--qWarranty.ProductDate,qWarranty.WarrantySrok,
+	--case when qWarranty.WarrantyDate>0 THEN CONVERT(char(10),qWarranty.WarrantyDate,104) ELSE '' END + CASE WHEN qWarranty.FWarrantyDate>0 THEN '('+CONVERT(char(10),qWarranty.FWarrantyDate,104) + ')' ELSE '' END as [WarrantyDate],
+	--case when dbo.tblAllWarrantyExpired.IDAll>0 THEN 255 ELSE 0 END as WarrantyExpired,
+	--1 as Srt
+	--FROM dbo.tblPredShceta WITH (NOLOCK) 
+	--INNER JOIN dbo.tblSchEl WITH (NOLOCK) ON dbo.tblPredShceta.PredShcID = dbo.tblSchEl.ShcID
+	--INNER JOIN dbo.tblAll with (nolock) ON dbo.tblSchEl.AllID = dbo.tblAll.IDSchEl 
+	--inner join dbo.tblShceta with (nolock) ON dbo.tblAll.ShcID = dbo.tblShceta.ShcID
+	--left outer join
+	--(SELECT WarrantyDate,cast(WarrantySrok as nvarchar(50)) + case WarrantyTip WHEN '' THEN '' WHEN 'd' THEN ' д' WHEN 'm ' THEN ' м' WHEN 'y' THEN ' г' END as WarrantySrok ,ProductDate,IDAll,FWarrantyDate FROM dbo.tblAllWarranty with (nolock)
+	--WHERE NumPart = '--IDAll--') as qWarranty  ON dbo.tblAll.AllID = qWarranty.IDAll
+	--left outer join dbo.tblAllWarrantyExpired with (nolock) ON dbo.tblAll.AllID = dbo.tblAllWarrantyExpired.IDAll
+	--WHERE      (dbo.tblSchEl.SkladID = @txtID)
+	--ORDER BY dbo.tblSchEl.AllID desc,Srt
+	
+end
+else begin
+	SELECT     dbo.tblPredShceta.НомерСчета, dbo.tblPredShceta.ДатаСчета, dbo.tblSchEl.Количество, 
+                      dbo.tblSchEl.Количество - ISNULL(qAll.Kol, 0) AS Недополучено, dbo.tblSchEl.СрокПоставки, 
+                      --NmeCat добавлено по ТЗ 501 итерация 2 Знака М (14.11.22)
+                      dbo.tblPredShceta.Организация + CASE WHEN dbo.tblSchEl.NmeCat is null THEN '' ELSE ' (' + dbo.tblSchEl.NmeCat + ')' END as Организация, 
+                      --
+                      dbo.tblPredShceta.TP AS Покупатель, dbo.tblPredShceta.PredShcID, dbo.Sklad.Код, dbo.Sklad.Элемент, dbo.Sklad.Серия, dbo.Sklad.Наименование, 
+                      dbo.Sklad.Номинал, dbo.Sklad.Корпус, dbo.Sklad.Изготовитель, dbo.Sklad.ГдеКупил, dbo.Sklad.ПримечаниеДолг, dbo.Sklad.Количество AS Kolvo, 
+                      dbo.tblSchEl.AllID, dbo.tblSchEl.FirstSrokPost,CASE WHEN dbo.tblSchEl.IsProblem=1 THEN 'Да' Else '' END as Probl,
+                      CASE WHEN right(dbo.tblPredShceta.НомерСчета,8)='(Детали)' THEN 'Det' ELSE 'El' END as Tip,dbo.tblSchEl.IsProblem,
+                      --по ТЗ 545 Маслюкова (29.11.22)
+                      dbo.tblSchEl.OverrideProblem,dbo.tblSchEl.DtaPost1,qMail.DT,qMail.ans,
+					  qKols.PostKol,qKols.PathKol,qKols.ShippedKol
+	FROM         dbo.tblPredShceta WITH (NOLOCK) 
+	INNER JOIN dbo.tblSchEl WITH (NOLOCK) ON dbo.tblPredShceta.PredShcID = dbo.tblSchEl.ShcID
+	INNER JOIN dbo.Sklad WITH (NOLOCK) ON dbo.Sklad.Код = dbo.tblSchEl.SkladID
+	CROSS APPLY dbo.GetDifferentsKolSQL(dbo.tblSchEl.AllID ) as qKols
+	LEFT OUTER JOIN 
+	(SELECT SUM(dbo.tblAll.Количество) as Kol,IDSchEl FROM dbo.tblAll WITH (NOLOCK)
+	GROUP BY dbo.tblAll.IDSchEl) as qAll ON dbo.tblSchEl.AllID = qAll.IDSchEl 
+		left outer join 
+	( select dbo.tblSchMailing.IDSch,dbo.tblSchMailing.DT,dbo.tblSchMailing.ans from dbo.tblSchMailing WITH (NOLOCK) 
+	Inner join (select IDsch,max(dt) as dt from dbo.tblSchMailing where DTAns > 0
+	group by IDsch ) as qMax On qMax.IDSch = dbo.tblSchMailing.IDSch and dbo.tblSchMailing.DT = qMax.dt
+	) as qMail On qMail.IDSch = dbo.tblSchEl.ShcID
+	WHERE      (dbo.Sklad.Код = @txtID) AND (dbo.tblSchEl.Количество - ISNULL(qAll.Kol, 0) > 0)
+end
+END
+
+
+

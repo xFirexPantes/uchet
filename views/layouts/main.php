@@ -24,7 +24,9 @@ $this->render('_head');
 <?= $this->render('_header') ?>
 
 <main id="main" class="flex-grow-1" role="main">
-    <div class="container">
+    <?php /* Широкие экраны (статистика, входящие счета) просят контейнер во всю ширину
+             через $this->params['wide'] — класс попадает в HTML сразу, без «разворота» скриптом. */ ?>
+    <div class="container<?= !empty($this->params['wide']) ? ' vh-wide' : '' ?>">
         <?php if (!empty($this->params['breadcrumbs'])): ?>
             <?= Breadcrumbs::widget(['links' => $this->params['breadcrumbs']]) ?>
         <?php endif ?>
