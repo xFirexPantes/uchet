@@ -71,6 +71,7 @@ class StatFilter extends Model
     public $dl = 0;                 // флажок dl: 1 — граница в долларах (Access ставит его для вида 7)
     public $sort = '';              // сортировка списка: имя поля (OrdKod/OrdNaim/… в Access — кнопки-переключатели)
     public $dir = 'asc';            // asc | desc
+    public $vidPrev = '';           // вид на момент предыдущей отправки формы (скрытое поле)
 
     /**
      * Правила по «Виду» — из fnRepaintFormStat и ПолеСоСписком24_AfterUpdate (frmSt).
@@ -125,6 +126,7 @@ class StatFilter extends Model
         return [
             ['vid', 'string', 'max' => 4],
             ['vid', 'match', 'pattern' => '/^[0-9ab]$/', 'message' => 'Неизвестный вид списка.'],
+            ['vidPrev', 'string', 'max' => 4],
             ['fnd', 'trim'],
             ['fnd', 'string', 'max' => 100],
             ['f', 'string', 'max' => 500],
@@ -146,17 +148,21 @@ class StatFilter extends Model
     /**
      * Применяет правила по «Виду» к фильтру (как fnRepaintFormStat в Access).
      *
-     * Access при смене вида сам выставляет fltZ1, FZ275 и прячет часть фильтров.
-     * В вебе вид и фильтры приезжают в одной ссылке, поэтому те же правила
-     * применяем здесь: иначе в ссылке может остаться «Вид 3» со «Заказ>0» и процедура
-     * вызовется как xp_frmStNewRS3_0, чего в Access не бывает.
+     * Важно: Access вызывает fnRepaintFormStat ТОЛЬКО при смене вида
+     * (ПолеСоСписком24_AfterUpdate). Поэтому принудительный fltZ1 ставится только
+     * если вид изменился (vidPrev), иначе перебивался бы выбор пользователя —
+     * например, «Все» в видах 2, 4 и b, где переключатель виден.
+     *
+     * Скрытые фильтры (FZ275, даты, SkladID) приводятся к значениям Access всегда:
+     * пользователь их не видит и изменить не может.
      */
     public function applyViewRules(): void
     {
         $r = self::VIEW_RULES[$this->vid] ?? [];
+        $changed = $this->firstTime() || (string)$this->vidPrev !== (string)$this->vid;
 
-        // Принудительное значение fltZ1
-        if (array_key_exists('z1', $r)) {
+        // Принудительное значение fltZ1 — только при смене вида
+        if ($changed && array_key_exists('z1', $r)) {
             $this->fltZ1 = (int)$r['z1'];
         }
 
@@ -165,7 +171,7 @@ class StatFilter extends Model
             $this->fz275 = 0;
         }
 
-        // Вид b: принудительный склад -500
+        // Вид b: принудительный склад -500 (в Access Case "b": Me!SkladID = -500)
         if (array_key_exists('sklad', $r)) {
             $this->sklad = (int)$r['sklad'];
         }
@@ -175,6 +181,27 @@ class StatFilter extends Model
             $this->dateS = null;
             $this->datePo = null;
         }
+    }
+
+    /** Первое открытие формы: в Access это FirstTime = True (только что открыли). */
+    public function firstTime(): bool
+    {
+        return (string)$this->vidPrev === '';
+    }
+
+    /**
+     * Все фильтры в значениях по умолчанию — условие FirstTime в cboflt_AfterUpdate.
+     *
+     * Access: если при первом применении фильтров f = "%", SkladManagers = "%",
+     * TypeSel = 1 и WhatFirm = 0, процедура вызывается с SkladID = -500 —
+     * то есть форма открывается пустой («установите фильтры»), а не грузит весь склад.
+     */
+    public function isDefaultSet(): bool
+    {
+        return $this->f === '%'
+            && $this->manager === '%'
+            && (int)$this->typeSel === 1
+            && (int)$this->firm === 0;
     }
 
     /** Вид с суффиксом для имени процедуры: 1 + fltZ1=1 → "1_0". */

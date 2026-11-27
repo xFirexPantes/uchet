@@ -8,13 +8,18 @@ use Yii;
 /**
  * Процедуры формы frmSt «Статистика» (аналог SetRS4Statistic из модуля формы).
  *
- * Параметры передаются ПО ПОРЯДКУ (знаки ?), как в VhSchetService: настоящих имён
- * параметров процедур мы пока не знаем.
+ * Параметры передаются ПО ПОРЯДКУ (знаки ?), но имена и типы сверены с текстами процедур:
+ *   xp_frmStNewRS{What}
+ *     (@S nvarchar(255), @f nvarchar(100), @Otv int, @Rgm int, @WhatFirm smallint,
+ *      @SkladID int, @FZ275 int, @WorkProblEl tinyint)
  *
- * Порядок вызова из VBA (SetRS4Statistic):
- *   xp_frmStNewRS{What}  'fnd', 'f', Otv, Rgm, WhatFirm, SkladID, FZ275, fltStatProblEl
- *   xp_frmStNewRS7_0     'fnd', 'f', 'Otv', Rgm, WhatFirm, 0, Bnd, Razn, Kurs
- *   xp_frmStNewRS1_1     'fnd', 'f', Otv, Rgm, WhatFirm, 'yyyymmdd', 'yyyymmdd', 0, FZ275, fltStatProblEl
+ * Особые случаи:
+ *   xp_frmStNewRS7_0  (@S, @f, @Otv, @Rgm, @WhatFirm, @SkladID=0, @Bnd, @Razn, @Kurs)
+ *   xp_frmStNewRS1_1  (@S, @f, @Otv, @Rgm, @WhatFirm, @DateS yyyymmdd, @DateE yyyymmdd,
+ *                      @SkladID=0, @FZ275, @WorkProblEl)
+ *
+ * @SkladID = -500 — служебный режим «список пуст, установите фильтры» (так форма
+ * открывается впервые и так работает вид b).
  *
  * f — мультивыбор фирм (frmFndFirm 7 → xp_frmStMultiSelectResult): «%» или ID через запятую.
  * filt1/filt2/filt3 в эти процедуры не передаются — они работают с временной таблицей счетов.
@@ -24,32 +29,9 @@ use Yii;
  */
 class StatService
 {
-    /** Служебные поля подформы: в Access у них Visible = False либо это технические ключи. */
-    public const HIDDEN = [
-        'IDCursor', 'reqSchColor', 'chk', 'IDInvoice', 'Colr', 'IDRes', 'IsBoth', 'DfltIsp',
-        'SostProblEl', 'TakeMe4St', 'RequestSch', 'MainPlace', 'OrderKat',
-    ];
-
-    /** [подпись, ширина px, выравнивание вправо]. Поля, которых здесь нет, выводятся как есть. */
-    public const META = [
-        'Код'           => ['Код', 70, false],
-        'Наименование'  => ['Наименование', 300, false],
-        'Analog'        => ['Аналог', 200, false],
-        'Страна'        => ['Страна', 110, false],
-        'Производитель' => ['Производитель', 150, false],
-        'Движение с'    => ['Движение с', 100, false],
-        'Кратко'        => ['Кратко', 150, false],
-        'Кол-во'        => ['Кол-во', 80, true],
-        'txtSV'         => ['Дефицит', 80, true],
-        'Примечание'    => ['Примечание', 260, false],
-        'Исполнитель'   => ['Исполнитель', 120, false],
-        'LowR'          => ['Сумма,$', 100, true],
-        'NotRec'        => ['Не рек.', 60, false],
-        'VP5'           => ['ВП5', 50, false],
-        'NoAnalog'      => ['Нет аналога', 80, false],
-        'KolPok'        => ['Кол-во пок.', 90, true],
-        'FZ275Kol'      => ['ФЗ-275', 70, true],
-    ];
+    /** Служебные поля и подписи колонок вынесены в StatColumns (у них своя логика по видам). */
+    public const HIDDEN = StatColumns::HIDDEN;
+    public const META = StatColumns::META;
 
     /**
      * Футер списка: граница цены (PriceBound), разница (Razn), курс (KursUSD) и флажок «в долларах» (dl).
@@ -271,18 +253,9 @@ class StatService
      *
      * @return array<int, array{0:string,1:string,2:int,3:bool}> [поле, подпись, ширина, вправо]
      */
-    public static function columns(array $rows): array
+    public static function columns(array $rows, string $vid = ''): array
     {
-        $fields = [];
-        foreach ($rows as $r) {
-            foreach (array_keys($r) as $k) {
-                if (!in_array($k, self::HIDDEN, true)) $fields[$k] = true;
-            }
-        }
-        return array_map(
-            static fn($f) => [$f, ...(self::META[$f] ?? [$f, 0, false])],
-            array_keys($fields)
-        );
+        return StatColumns::build($rows, $vid);
     }
 
     /** Подпись поля для человека (шапка таблицы, подпись сортировки). */
@@ -322,12 +295,10 @@ class StatService
         if (!preg_match('/^[0-9ab](_0)?$/', $what)) {
             return ['rows' => [], 'note' => null, 'error' => 'Неизвестный вид списка.'];
         }
-        // Подготовительные режимы 9/a: сначала PrepareMinKolFrom1C, потом основной вызов.
-        // Без этой процедуры список будет неверным, поэтому честно не показываем ничего.
-        if (str_starts_with($what, '9') || str_starts_with($what, 'a')) {
-            return ['rows' => [], 'note' => null,
-                'error' => 'Вид «' . $what . '» пока не перенесён: нужна процедура PrepareMinKolFrom1C.'];
-        }
+        // Виды 9 и a вызываются штатно (сигнатуры 8 параметров, как у остальных).
+        // Их результат строится по dbo.Sklad1C с Who = CURRENT_USER — эту таблицу наполняет
+        // PrepareMinKolFrom1C вне формы frmSt, поэтому при незаполненной таблице список пуст.
+        // Так же ведёт себя Access: сама форма процедуру подготовки не вызывает.
 
         // FlgPaintDolg = False → к строке поиска добавляется «&» (так в Access по умолчанию).
         $fnd = StatContext::needPaintDolg() ? (string)$f->fnd : '&' . $f->fnd;
@@ -355,7 +326,10 @@ class StatService
                 $rows = $this->proc('dbo.xp_frmStNewRS1_1 ?, ?, ?, ?, ?, ?, ?, 0, ?, ?',
                     [$fnd, $firmSel, $otv, $rgm, $firm, $this->ymd($f->dateS), $this->ymd($f->datePo), $fz, $flt])->queryAll();
             } else {
-                $sklad = (int)$f->sklad;
+                // FirstTime в Access (cboflt_AfterUpdate): при первом применении фильтров,
+                // если все они в значениях по умолчанию, передаётся SkladID = -500 —
+                // процедура отдаёт пустой список «установите фильтры», а не весь склад.
+                $sklad = $f->firstTime() && $f->isDefaultSet() ? -500 : (int)$f->sklad;
                 $rows = $this->proc('dbo.xp_frmStNewRS' . $what . ' ?, ?, ?, ?, ?, ?, ?, ?',
                     [$fnd, $firmSel, $otv, $rgm, $firm, $sklad, $fz, $flt])->queryAll();
             }
@@ -364,7 +338,12 @@ class StatService
             return ['rows' => [], 'note' => null, 'error' => 'Не удалось получить список: ' . $e->getMessage()];
         }
 
-        return ['rows' => $rows, 'note' => null, 'error' => null];
+        // Пустой ответ в режиме -500 — это не ошибка, а приглашение выбрать фильтры
+        $note = (!$rows && $f->firstTime() && $f->isDefaultSet())
+            ? 'Выберите фильтры, чтобы получить список (в Access форма тоже открывается пустой).'
+            : null;
+
+        return ['rows' => $rows, 'note' => $note, 'error' => null];
     }
 
     /**

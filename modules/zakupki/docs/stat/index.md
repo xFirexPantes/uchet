@@ -2,7 +2,7 @@
 title: Статистика
 access_form: frmSt
 tz: []
-procs: [dbo.xp_GetVidSel, dbo.xp_frmStNewRS1_0, dbo.xp_frmStNewRS2_0, dbo.xp_frmStNewRS3_0, dbo.xp_frmStNewRS4_0, dbo.xp_frmStNewRS5_0, dbo.xp_frmStNewRS7_0, dbo.xp_frmStNewRS9_0, dbo.xp_frmStNewRSa_0, dbo.xp_frmStNewRSb_0, dbo.xp_frmStNewRS1_1, dbo.xp_frmStRS1Analog, dbo.xp_GetWhatFirm, dbo.xp_GetSkladManagersNew, dbo.xp_SkladTrackingSprLst, dbo.xp_frmStLstFZ275, dbo.xp_GetKursByVal, dbo.xp_GetAdr, dbo.xp_SkladUpdPrim, dbo.xp_SkladTrackingUpdComm, dbo.xp_StatWorkWithProblemLstSost, dbo.xp_StatWorkWithProblemUpdSost]
+procs: [dbo.xp_GetVidSel, dbo.xp_frmStNewRS1_0, dbo.xp_frmStNewRS1_1, dbo.xp_frmStNewRS2_0, dbo.xp_frmStNewRS3_0, dbo.xp_frmStNewRS4_0, dbo.xp_frmStNewRS5_0, dbo.xp_frmStNewRS7_0, dbo.xp_frmStNewRS8, dbo.xp_frmStNewRS8_0, dbo.xp_frmStNewRS9_0, dbo.xp_frmStNewRSa_0, dbo.xp_frmStNewRSb, dbo.xp_frmStNewRSb_0, dbo.xp_frmStRS1Analog, dbo.xp_GetWhatFirm, dbo.xp_GetSkladManagersNew, dbo.xp_SkladTrackingSprLst, dbo.xp_frmStLstFZ275, dbo.xp_GetKursByVal, dbo.xp_GetAdr, dbo.xp_SkladUpdPrim, dbo.xp_SkladTrackingUpdComm, dbo.xp_StatWorkWithProblemLstSost, dbo.xp_StatWorkWithProblemUpdSost]
 perm: form:frmSt
 ---
 
@@ -18,6 +18,8 @@ perm: form:frmSt
 - **Фирма (WhatFirm)** — одиночный список `exec dbo.xp_GetWhatFirm`. В виде 7 скрыт вместе с `TypeSel`.
 - **Менеджер** — `SkladManagers`, `exec dbo.xp_GetSkladManagersNew`. От него зависят ответственный (`Otv`, 3-я колонка) и раскраска долгов (4-я колонка). В виде `b` список берётся из `exec dbo.xp_SkladTrackingSprLst 1`, значение — первая колонка (текст), `Column(2)` — ID. В виде 7 скрыт вместе с `TypeSel`.
 - **Дата документа** — `PickDate` / `PickDate2`: если заданы обе даты, список строится процедурой `xp_frmStNewRS1_1` (в Access так же: заполненный `PickDate` перекрывает вид). Поля видны только в виде 1 при `fltZ1 = 1`; при скрытии Access очищает значения.
+  - В Access оба поля `Locked = True` — вручную в них не вводят. Даты выбираются кнопкой **«Даты»** (`GetInt_Click` → `frmGetInterval`), которая заполняет `PickDate`/`PickDate2` и сразу перечитывает список (`cboflt_AfterUpdate`).
+  - В вебе поля тоже `readonly`, а кнопка «Даты» открывает то же окно интервала (`web/js/interval.js`, как на других экранах) и после выбора отправляет форму.
 - **Сырьё** — `TypeSel`: НЕ давальческое / давальческое / не важно. В виде 7 скрыт.
 - **Заказ** — `fltZ1`: «Заказ>0» (суффикс `_0` у имени процедуры) / «Все». В виде `b` подписи другие: «Все» / «Нет счетов более недели».
 - **Состояние** — `fltStatProblEl`, `exec dbo.xp_StatWorkWithProblemLstSost 1`. Виден в видах 1 и 3; значение 255 — все состояния.
@@ -44,10 +46,30 @@ perm: form:frmSt
 Для вида `b` подписи `fltZ1` — «Все» / «Нет счетов более недели», заголовок группы не выводится.
 `FndZac` в ветке `b` скрывается, но общий блок после `Select Case` снова её включает (`FndZac.Visible = TypeSel.Visible`, а `TypeSel` скрыт только в виде 7) — поэтому в вебе она видна.
 
+Правила по виду применяются **только при смене вида** — как `fnRepaintFormStat`, которую Access вызывает из `ПолеСоСписком24_AfterUpdate`. Для этого форма передаёт скрытое поле `vidPrev` (вид на момент отправки): если `vidPrev` совпадает с `vid`, выбор пользователя не перебивается (например, «Все» в видах 2, 4 и `b`). Скрытые фильтры (`FZ275`, даты, `SkladID`) приводятся к значениям Access всегда.
+
+### Первое открытие
+`cboflt_AfterUpdate` при `FirstTime = True` и фильтрах по умолчанию (`f = "%"`, `SkladManagers = "%"`, `TypeSel = 1`, `WhatFirm = 0`) вызывает процедуру с `SkladID = -500` — это служебный режим «список пуст, установите фильтры». Поэтому форма открывается без строк и с подсказкой «Выберите фильтры». Как только меняется любой фильтр (или нажато «Применить»), `FirstTime` уже `False` и грузится обычный список.
+
 `filt1` / `filt2` / `filt3` (поставщик, город, дата) в Access — фильтры временной таблицы счетов (`#tblTmpSt`, кнопки `filt9` / `filt10`), а не параметры процедуры вида. Переносятся отдельно, вместе с экраном фильтра по счетам.
 
 ## Список
 - Колонки строятся по полям, которые вернула процедура: у каждого вида свой набор.
+- Подписи и видимость части колонок зависят от вида — как `Caption` и `Visible` у подписей подформы `frmMinimum` в `fnRepaintFormStat` (`StatColumns::CAPTIONS`, `HIDDEN_IN`, `SHOWN_IN`):
+
+| Колонка | Подпись по видам | Когда видна |
+|---|---|---|
+| `txtSV` | 1,2,4,7,9,a — «Заказать»; 3 — «Долг»; b — «Миним. сработал» | все, кроме вида 5 |
+| `МинКоличество` | 1 — «Долг»; 2,3 — «Минимум»; 4 — «Резерв»; 9 — «Мин.ПАНТЕС»; a — «Мин.ТОРЭКС» | все, кроме вида 5 |
+| `LowR` | 7 — «Дешевле,$»; b — «Бл.старт заказа» | все |
+| `MinStartZak` | b — «Бл.старт заказа» | все |
+| `FZ275Kol` | 1,3 — «Заказать»; b — «Мин.» | только виды 1 и 3 |
+| `OrderKat` | 1,b — «Ближ. поставка» | только виды 1 и b |
+| `SostProblEl` | b — «Ком.произв.» | только вид b |
+| `DfltIsp` | b — «Информация» | только вид b |
+| `Analog` | b — «Серия» | все |
+| `KolPok`, `NotRec`, `VP5`, `NoAnalog` | — | все, кроме вида b |
+
 - Щелчок по заголовку сортирует (повторный — в обратную сторону), ✕ в шапке списка возвращает исходный порядок процедуры.
 - Щелчок по строке делает её текущей (подсветка, как `OnCurrent` в Access).
 - Двойной щелчок по строке открывает карточку элемента (`/sklad/elem/view?id=…`, форма Access `Fobnovlen1`)
@@ -124,10 +146,9 @@ perm: form:frmSt
 - Кнопки печати, Excel, заказов, перемещения, трекинга и прочие действия формы `frmSt` — вторая очередь.
 
 ## Пока заглушки
-- **Непроверено:** параметры процедур видов передаются позиционно (знаки `?`), имена и порядок параметров `xp_frmStNewRS…` ещё не сверены с текстами процедур. До сверки возможны ошибки в вызове.
-- Ответственный (`Otv`, в Access `SkladManagers.Column(2)`) и признак подсветки долгов (`NeedPaintDolg`, `Column(3)`) читаются из выбранного менеджера в классе `StatContext`; для «%» — 0 / false, как в Access. Для вида `b` список менеджеров — `xp_SkladTrackingSprLst 1`. Если процедуры нет или она ничего не вернула — 0 / false.
+- Ответственный (`Otv`, в Access `SkladManagers.Column(2)`) и признак подсветки долгов (`NeedPaintDolg`, `Column(3)`) читаются из выбранного менеджера в классе `StatContext`; для «%» — 0 / false, как в Access. Для вида `b` список менеджеров — `xp_SkladTrackingSprLst 1` (значение — `fld1`, `Column(2)` — `ID`). Если процедуры нет или она ничего не вернула — 0 / false.
 - Курс USD (нужен только виду 7) — `xp_GetKursByVal 840`; если в фильтре курс задан, берётся он.
-- Виды `9` и `a` требуют `PrepareMinKolFrom1C` — при выборе показывается сообщение, что вид не перенесён.
+- Виды `9` и `a` вызываются штатно (`xp_frmStNewRS9_0`, `xp_frmStNewRSa_0`). Их результат строится по `dbo.Sklad1C` с `Who = CURRENT_USER`; таблицу наполняет `PrepareMinKolFrom1C` вне формы `frmSt` — при незаполненной таблице список будет пустым (как и в Access).
 - Форма переноса элемента `frmMoveEl` (двойной щелчок по «ГдеКупил» = «ПЕРЕЛОЖИТЬ НА СКЛАДЕ») не перенесена: показывается сообщение.
 - Панель `SubMinimumFilter` — не перенесена.
 - Фильтр по счетам (`filt1`/`filt2`/`filt3`, временная таблица `#tblTmpSt`) — вторая очередь.

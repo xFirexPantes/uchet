@@ -37,8 +37,9 @@ use yii\helpers\Url;
 
 $this->title = 'Статистика';
 
-// Колонки — по первой строке результата: состав у каждого вида свой
-$cols = StatService::columns($rows);
+// Колонки — по первой строке результата: состав у каждого вида свой.
+// Подписи и видимость части колонок зависят от вида (fnRepaintFormStat) — см. StatColumns.
+$cols = StatService::columns($rows, (string)$filter->vid);
 
 $hasDateFilter = $filter->dateS || $filter->datePo;
 // Видимость фильтров — правила fnRepaintFormStat (после applyViewRules в контроллере)
@@ -94,6 +95,10 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
     <form method="get" action="<?= Url::to(['index']) ?>" id="frmSt" class="vh-form">
         <?= Html::hiddenInput('sort', $filter->sort) ?>
         <?= Html::hiddenInput('dir', $filter->dir) ?>
+        <?php /* Вид на момент отправки: по нему StatFilter понимает, что вид сменили,
+                 и применяет правила fnRepaintFormStat (fltZ1). При обычной отправке
+                 vidPrev == vid, и выбор пользователя не перебивается. */ ?>
+        <?= Html::hiddenInput('vidPrev', $filter->vid) ?>
 
         <section class="vh-filters">
             <div class="vh-fgroup">
@@ -199,15 +204,22 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                 <input type="hidden" name="f" value="<?= Html::encode($filter->f) ?>">
             <?php endif ?>
 
-            <?php /* PickDate/PickDate2: только вид 1 при fltZ1 = 1 (Form_Load frmSt) */ ?>
+            <?php /* PickDate/PickDate2: вид 1 при fltZ1 = 1 (Form_Load frmSt).
+                     В Access оба поля Locked = True и заполняются только кнопкой «Даты»
+                     (GetInt_Click → frmGetInterval → KodNullEl(0..1)), поэтому здесь они
+                     readonly, а даты выбираются в том же окне интервала, что и на других экранах. */ ?>
             <?php if ($showDates): ?>
                 <div class="vh-fgroup">
                     <div class="vh-fgroup-t">Дата документа</div>
                     <div class="vh-frow">
                         <span class="vh-lbl">с</span>
-                        <input class="vh-inp" type="date" name="dateS" value="<?= Html::encode($filter->dateS) ?>">
+                        <input class="vh-inp" type="date" name="dateS" value="<?= Html::encode($filter->dateS) ?>"
+                            readonly title="В Access поле заблокировано: даты выбираются кнопкой «Даты»">
                         <span class="vh-lbl">по</span>
-                        <input class="vh-inp" type="date" name="datePo" value="<?= Html::encode($filter->datePo) ?>">
+                        <input class="vh-inp" type="date" name="datePo" value="<?= Html::encode($filter->datePo) ?>"
+                            readonly title="В Access поле заблокировано: даты выбираются кнопкой «Даты»">
+                        <button type="button" class="vh-btn" id="stDates"
+                            title="Выбрать интервал дат (в Access — кнопка «Даты», форма frmGetInterval)">Даты</button>
                         <?php if ($hasDateFilter): ?>
                             <a class="vh-btn vh-btn-xs" href="<?= Url::to($noDates) ?>" title="Сбросить даты">✕</a>
                         <?php endif ?>
@@ -244,7 +256,9 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                 <input type="hidden" name="fltZ1" value="<?= (int)$filter->fltZ1 ?>">
             <?php endif ?>
 
-            <?php /* fltStatProblEl: виден в видах 1 и 3 (fnRepaintFormStat + fltZ1_AfterUpdate) */ ?>
+            <?php /* fltStatProblEl: виден в видах 1 и 3 (fnRepaintFormStat + fltZ1_AfterUpdate).
+                     В остальных видах Access его скрывает, но значение НЕ очищает —
+                     оно всё равно уходит в @WorkProblEl, поэтому держим скрытое поле. */ ?>
             <?php if ($showStatus): ?>
                 <div class="vh-fgroup">
                     <div class="vh-fgroup-t">Состояние</div>
@@ -263,6 +277,8 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                         </select>
                     </div>
                 </div>
+            <?php else: ?>
+                <input type="hidden" name="fltStatProblEl" value="<?= (int)$filter->fltStatProblEl ?>">
             <?php endif ?>
 
             <?php /* FZ275: список xp_frmStLstFZ275 (0 — все, -2 — ПГ, -3 — не ПГ).
@@ -409,6 +425,11 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
 </div>
 
 <?php
+// Окно интервала дат — форма Access frmGetInterval (общий interval.js проекта).
+// interval.js рисует окно поверх страницы и использует dateBox/msgBox из msgbox.js.
+$this->registerJsFile('@web/js/msgbox.js');
+$this->registerJsFile('@web/js/interval.js');
+
 $this->registerCss(<<<'CSS'
 .vh-stat { --vh-blue:#40B3D8; --vh-blue-d:#2f8baa; --vh-blue-l:#eaf7fc; --vh-blue-b:#c5e7f2; --vh-ink:#1b5c72;
     background:#f4fafc; padding:.4rem .7rem .6rem; box-sizing:border-box;
@@ -886,6 +907,27 @@ JS, \yii\web\View::POS_END);
 // Экран на всю ширину окна + «Все» и конкретные фирмы в мультивыборе исключают друг друга
 $this->registerJs(<<<'JS'
 document.getElementById('main')?.querySelector(':scope > .container')?.classList.add('vh-wide');
+
+/**
+ * Кнопка «Даты» — GetInt_Click формы frmSt: открывает frmGetInterval (interval.js),
+ * полученные даты кладёт в PickDate/PickDate2 и сразу перечитывает список
+ * (в Access после заполнения вызывается cboflt_AfterUpdate).
+ */
+(function () {
+    const btn = document.getElementById('stDates');
+    const frm = document.getElementById('frmSt');
+    if (!btn || !frm || typeof getInterval !== 'function') return;
+
+    btn.addEventListener('click', async () => {
+        const cur = { beg: frm.dateS?.value || '', end: frm.datePo?.value || '' };
+        // Режим 1: начать с переданных дат (Form_Load frmGetInterval); пусто — «месяц» на сегодня
+        const r = await getInterval(cur.beg || cur.end ? 1 : 0, cur);
+        if (!r) return;
+        frm.dateS.value = r[0];
+        frm.datePo.value = r[1];
+        frm.submit();
+    });
+})();
 
 (function () {
     const boxes = [...document.querySelectorAll('input[name="f[]"]')];

@@ -67,7 +67,7 @@ class StatController extends BaseController
     public function actionRows()
     {
         $res = $this->load(false);
-        $cols = StatService::columns($res['rows']);
+        $cols = StatService::columns($res['rows'], (string)$res['filter']->vid);
 
         Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
         return [
