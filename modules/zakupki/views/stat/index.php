@@ -418,6 +418,9 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
             <span>Резервы <span class="vh-an-code" id="stResCode"></span></span>
             <span class="vh-tools">
                 <span id="stResInfo">выберите строку в списке</span>
+                <?php /* Легенда цветов подформы резервов — ConditionalFormat14 по DtaPost */ ?>
+                <button type="button" class="vh-btn vh-btn-xs" id="stResHints"
+                        title="Что означают цвета в списке резервов">? Цвета</button>
                 <?php /* TrgRecalc: пересчёт таргета по резерву; при виде b скрыта (fnRepaintFormStat) */ ?>
                 <?php if ((string)$filter->vid !== 'b'): ?>
                     <button type="button" class="vh-btn vh-btn-xs" id="stTrgRecalc"
@@ -524,6 +527,30 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                     <div class="vh-hints-col">
                         <div class="vh-hints-t">Строка</div>
                         <div class="vh-hint-row"><span class="vh-sw sw-mint"></span><span class="vh-sw-t sw-green">счёт запрошен</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <?php /* Легенда цветов подформы резервов SubMinimFilter — ConditionalFormat14 по DtaPost */ ?>
+    <div class="vh-modal" id="stResHintsBox">
+        <div class="vh-modal-box" role="dialog" aria-modal="true" aria-labelledby="stResHintsT">
+            <div class="vh-modal-head">
+                <span id="stResHintsT">Цвета в списке резервов</span>
+                <button type="button" class="vh-modal-x" id="stResHintsX" title="Закрыть (Esc)">✕</button>
+            </div>
+            <div class="vh-modal-body">
+                <p class="vh-hint">Цвет фона в столбцах «Название темы» и «Пробл» подсказывает срок поступления.</p>
+                <div class="vh-hints">
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Название темы</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-magenta"></span><span class="vh-sw-t">дата поступления ещё не наступила</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-olive"></span><span class="vh-sw-t">поступление сегодня</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Пробл / В</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t sw-red">красный «!» — из-за этого резерва элемент попал в долг</span></div>
                     </div>
                 </div>
             </div>
@@ -692,6 +719,8 @@ input[type=date].vh-inp { padding:0 .2rem; }
 .vh-sw.sw-azure { background:#0ec2ff; }    .vh-sw-t.sw-azure { color:#0a7f9c; }
 .vh-sw.sw-violet { background:#9966ff; }   .vh-sw-t.sw-violet { color:#5a3a9a; }
 .vh-sw.sw-mint { background:#b1ffb1; }
+.vh-sw.sw-magenta { background:rgba(255,0,255,.35); }
+.vh-sw.sw-olive { background:rgba(128,128,0,.45); }
 .vh-sw.sw-plain { background:#fff; }
 .empty { color:#7d9aa7; font-style:italic; padding:.5rem .6rem; }
 
@@ -1162,6 +1191,16 @@ $this->registerJs(<<<'JS'
     if (hintsX) hintsX.addEventListener('click', closeHints);
     if (hints)  hints.addEventListener('click', e => { if (e.target === hints) closeHints(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHints(); });
+
+    // Легенда цветов подформы резервов
+    const resHints    = document.getElementById('stResHintsBox');
+    const resHintsBtn = document.getElementById('stResHints');
+    const resHintsX   = document.getElementById('stResHintsX');
+    const closeResHints = () => resHints && resHints.classList.remove('on');
+    if (resHintsBtn && resHints) resHintsBtn.addEventListener('click', () => resHints.classList.add('on'));
+    if (resHintsX) resHintsX.addEventListener('click', closeResHints);
+    if (resHints)  resHints.addEventListener('click', e => { if (e.target === resHints) closeResHints(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeResHints(); });
 
     const stamp = () => {
         const d = new Date();
