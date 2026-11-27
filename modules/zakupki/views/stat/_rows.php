@@ -8,6 +8,9 @@
  * Раскраска — fnRepaintFormStat формы frmSt. Цвета Access заданы в BGR, поэтому
  * переводятся в CSS через $css(): 16737945 → #9966ff и т. д.
  *
+ * Важно: условия сравниваются с ПОЛЯМИ набора (ControlSource), а не с подписями колонок:
+ * «Примечание» — это поле «ПримечаниеДолг» (Поле18 в frmMinimum), количество — «Количество».
+ *
  * @var array  $rows
  * @var array  $cols   колонки из StatService::columns()
  * @var float  $bnd    граница цены (PriceBound) в валюте вида; 0 — не задана
@@ -52,8 +55,8 @@ if (!$rows): ?>
                     elseif ($mv === 2)  $style[] = 'background:' . $css(13952764);   // [ExistMove] = 2
                 } elseif ($f === 'Количество' && (int)($r['ProblKol'] ?? 0) > 0) {
                     $style[] = 'background:' . $css(65535);             // [ProblKol] > 0 — vbYellow
-                } elseif (($f === 'txtSV' || $f === 'OrderEls') && (float)($r[$f] ?? 0) > 0) {
-                    $style[] = 'background:' . $css(255);               // txtSV > 0 — vbRed
+                } elseif ($f === 'txtSV' && (float)($r[$f] ?? 0) > 0) {
+                    $c = $css(255);                                     // txtSV > 0 — красный шрифт
                     $bold = true;
                 } elseif ($f === 'Код' && (int)($r['TakeMe4St'] ?? 0) === 1) {
                     $c = $css(16711680);                                // [TakeMe4St] = 1 — vbBlue
@@ -82,17 +85,16 @@ if (!$rows): ?>
                 }
             }
 
-            // --- Правила подформы frmMinimum (ConditionalFormat колонок) ---
-            if ($f === 'Кратко') {
-                if ($sost === 5)                          $c = $css(0x993366);
-                if ((int)($r['NotRec'] ?? 0) !== 0)       $c = $css(0xff00ff);
-            } elseif ($f === 'Кол-во') {
+            // --- Условное форматирование колонок frmMinimum (ConditionalFormat14) ---
+            // Поле18 / ПримечаниеДолг: [DfltIsp] = 1 → фон #ccffff
+            if ($f === 'ПримечаниеДолг' && (int)($r['DfltIsp'] ?? 0) === 1) {
+                $style[] = 'background:' . $css(0xccffff);
+            } elseif ($f === 'Количество') {
+                // IsBoth: 4 — оба склада, 1 — совпадение; отрицательное количество — оранжевый
                 $ib = (int)($r['IsBoth'] ?? 0);
                 if ($ib === 4)      $style[] = 'background:' . $css(0x99ccff);
                 elseif ($ib === 1)  $style[] = 'background:' . $css(0xccffff);
                 elseif ((float)($r[$f] ?? 0) < 0) $style[] = 'background:' . $css(0xffcc99);
-            } elseif ($f === 'Примечание' && (int)($r['DfltIsp'] ?? 0) === 1) {
-                $style[] = 'background:' . $css(0xccffff);
             }
 
             if ($c !== '') $style[] = "color:$c";

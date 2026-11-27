@@ -509,12 +509,11 @@ class StatService
     }
 
     /**
-     * Флаг «Счёт запр.» (CheckBox RequestSch подформы frmMinimum).
+     * Флаг «Счёт запр.» — CheckBox RequestSch подформы frmMinimum.
      *
-     * Access: RequestSch_MouseDown → UpdateNotRecFlg(Me!txtID, "ReqSch") — процедура
-     * переключает флаг и возвращает True при успехе, затем StndOnLne перезапрашивает строку.
-     * Текст UpdateNotRecFlg в выгрузке отсутствует, поэтому вызывается процедура с тем же
-     * контрактом CommonStartSP6(ID, proc, "ReqSch").
+     * VBA: RequestSch_MouseDown → UpdateNotRecFlg(Me!txtID, "ReqSch") →
+     * CommonStartSP6(SkladID, "dbo.xp_UpdateNotRecFlgNew", Rgm, , , 50).
+     * Коды результата: 0 — нет прав, 1 — изменено, 2 — не удалось.
      *
      * @return array{ok:bool, error:?string}
      */
@@ -524,11 +523,13 @@ class StatService
             return ['ok' => false, 'error' => 'Не указан элемент.'];
         }
 
-        $res = LegacySp::sp6($id, 'dbo.xp_UpdNotRecFlg', 'ReqSch', 0, 50);
+        $res = LegacySp::sp6($id, 'dbo.xp_UpdateNotRecFlgNew', 'ReqSch', 0, 50);
 
-        return $res > 0
-            ? ['ok' => true, 'error' => null]
-            : ['ok' => false, 'error' => 'Не удалось изменить флаг «Счёт запр.».'];
+        return match ($res) {
+            1       => ['ok' => true, 'error' => null],
+            0       => ['ok' => false, 'error' => 'У вас нет прав на изменение этого флажка'],
+            default => ['ok' => false, 'error' => 'Не удалось изменить состояние флажка'],
+        };
     }
 
     /**
