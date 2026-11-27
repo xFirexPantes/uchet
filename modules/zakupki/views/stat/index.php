@@ -4,8 +4,12 @@
  *
  * Фильтры — как на главной форме Access:
  *   Вид (ПолеСоСписком24), Поиск (FindElem), Фирмы (f, мультивыбор через frmFndFirm 7),
- *   WhatFirm, SkladManagers, даты PickDate/PickDate2 (только вид 1 при fltZ1 = 1),
- *   Сырьё (TypeSel), «Заказ>0/Все» (fltZ1), ФЗ-275, состояние проблемы (fltStatProblEl, только вид 1).
+ *   WhatFirm, SkladManagers, даты PickDate/PickDate2, Сырьё (TypeSel),
+ *   «Заказ>0/Все» (fltZ1), ФЗ-275 (список xp_frmStLstFZ275), состояние проблемы (fltStatProblEl).
+ *
+ * Видимость фильтров по видам — как в fnRepaintFormStat (см. StatFilter::VIEW_RULES):
+ *   FZ275 — только вид 1; Состояние — виды 1 и 3; Даты — вид 1 при fltZ1 = 1;
+ *   Фирмы/WhatFirm/Менеджер/Сырьё — все виды, кроме 7; «Заказ» — виды 1, 2, 4, b.
  *
  * Колонки списка в Access задавала подформа frmMinimum, а их состав и ширину менял
  * fnRepaintFormStat при смене «Вида» (каждый режим — своя процедура xp_frmStNewRS…).
@@ -18,6 +22,7 @@
  * @var array $firms
  * @var array $managers
  * @var array $statuses
+ * @var array $fz275    список ФЗ-275 (xp_frmStLstFZ275): 0 — все, -2 — ПГ, -3 — не ПГ
  * @var array $rows
  * @var string|null $error
  * @var string|null $note
@@ -36,9 +41,13 @@ $this->title = 'Статистика';
 $cols = StatService::columns($rows);
 
 $hasDateFilter = $filter->dateS || $filter->datePo;
-// PickDate/PickDate2 видны только в виде 1 при fltZ1 = 1 (Form_Load frmSt)
-$showDates = (string)$filter->vid === '1' && (int)$filter->fltZ1 === 1;
-$showStatus = (string)$filter->vid === '1';
+// Видимость фильтров — правила fnRepaintFormStat (после applyViewRules в контроллере)
+$showDates  = $filter->showDates();
+$showStatus = $filter->showStatus();
+$showZ1     = $filter->showZ1();
+$showFz275  = $filter->showFz275();
+$showFirms  = $filter->showFirms();
+$showWhat   = $filter->showWhat();
 
 // Ссылки собираем от текущих значений фильтра, чтобы смена одного параметра не теряла остальные.
 // Пустые значения выбрасываем, иначе в адресе копятся «?fnd=&city=&post=…».
@@ -115,8 +124,8 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
             </div>
 
             <?php /* f: мультивыбор фирм, в Access — frmFndFirm (OpenArgs 7) → xp_frmStMultiSelectResult.
-                     Виден там же, где TypeSel: в fnRepaintFormStat для вида 7 скрыт вместе с WhatFirm/FndZac. */ ?>
-            <?php if (!$footer['is7']): ?>
+                     Скрыт в виде 7: там fnRepaintFormStat прячет FndZac вместе с WhatFirm/TypeSel. */ ?>
+            <?php if ($showFirms): ?>
                 <div class="vh-fgroup vh-fgroup-firms">
                     <div class="vh-fgroup-t">Фирмы</div>
                     <details class="vh-firm"<?= $selFirms ? ' open' : '' ?>>
@@ -176,6 +185,20 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                 </div>
             <?php endif ?>
 
+            <?php /* WhatFirm / менеджер скрыты в виде 7, но значения Access всё равно передаёт в процедуру:
+                     держим их скрытыми полями, чтобы смена вида не теряла выбор. */ ?>
+            <?php if (!$showWhat): ?>
+                <input type="hidden" name="firm" value="<?= (int)$filter->firm ?>">
+                <input type="hidden" name="manager" value="<?= Html::encode($filter->manager) ?>">
+                <input type="hidden" name="typeSel" value="<?= (int)$filter->typeSel ?>">
+            <?php endif ?>
+
+            <?php /* Фирмы скрыты в виде 7, но второй параметр процедуры (Nz(Me!f, "%")) Access передаёт
+                     всегда — сохраняем выбор скрытым полем, чтобы он не потерялся при смене вида. */ ?>
+            <?php if (!$showFirms): ?>
+                <input type="hidden" name="f" value="<?= Html::encode($filter->f) ?>">
+            <?php endif ?>
+
             <?php /* PickDate/PickDate2: только вид 1 при fltZ1 = 1 (Form_Load frmSt) */ ?>
             <?php if ($showDates): ?>
                 <div class="vh-fgroup">
@@ -192,8 +215,8 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                 </div>
             <?php endif ?>
 
-            <?php /* TypeSel: в Access fnRepaintFormStat прячет фильтр «Сырьё» для вида 7 */ ?>
-            <?php if (!$footer['is7']): ?>
+            <?php /* TypeSel: в Access fnRepaintFormStat прячет фильтр «Сырьё» только для вида 7 */ ?>
+            <?php if ($showWhat): ?>
                 <div class="vh-fgroup">
                     <div class="vh-fgroup-t">Сырьё</div>
                     <label class="vh-radio"><input type="radio" name="typeSel" value="1"
@@ -205,21 +228,29 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                 </div>
             <?php endif ?>
 
-            <div class="vh-fgroup">
-                <div class="vh-fgroup-t">Заказ</div>
-                <label class="vh-radio"><input type="radio" name="fltZ1" value="1"
-                    <?= (int)$filter->fltZ1 === 1 ? 'checked' : '' ?> onchange="this.form.submit()"><span>Заказ&gt;0</span></label>
-                <label class="vh-radio"><input type="radio" name="fltZ1" value="0"
-                    <?= (int)$filter->fltZ1 === 0 ? 'checked' : '' ?> onchange="this.form.submit()"><span>Все</span></label>
-            </div>
+            <?php /* fltZ1: виден в видах 1, 2, 4, b; в остальных Access скрывает и задаёт сам.
+                     В виде b подписи другие: «Все» / «Нет счетов более недели». */ ?>
+            <?php if ($showZ1): ?>
+                <div class="vh-fgroup">
+                    <?php if ($filter->z1Title() !== ''): ?>
+                        <div class="vh-fgroup-t"><?= Html::encode($filter->z1Title()) ?></div>
+                    <?php endif ?>
+                    <label class="vh-radio"><input type="radio" name="fltZ1" value="1"
+                        <?= (int)$filter->fltZ1 === 1 ? 'checked' : '' ?> onchange="this.form.submit()"><span><?= Html::encode($filter->z1Labels()[0]) ?></span></label>
+                    <label class="vh-radio"><input type="radio" name="fltZ1" value="0"
+                        <?= (int)$filter->fltZ1 === 0 ? 'checked' : '' ?> onchange="this.form.submit()"><span><?= Html::encode($filter->z1Labels()[1]) ?></span></label>
+                </div>
+            <?php else: ?>
+                <input type="hidden" name="fltZ1" value="<?= (int)$filter->fltZ1 ?>">
+            <?php endif ?>
 
-            <?php /* fltStatProblEl: Visible = (ПолеСоСписком24 = 1) в fltZ1_AfterUpdate */ ?>
+            <?php /* fltStatProblEl: виден в видах 1 и 3 (fnRepaintFormStat + fltZ1_AfterUpdate) */ ?>
             <?php if ($showStatus): ?>
                 <div class="vh-fgroup">
                     <div class="vh-fgroup-t">Состояние</div>
                     <div class="vh-frow">
                         <select class="vh-inp" name="fltStatProblEl" onchange="this.form.submit()"
-                            title="Состояние проблемы: в Access видно только в виде 1">
+                            title="Состояние проблемы: в Access видно в видах 1 и 3">
                             <?php if (!$hasAllStatus): ?>
                                 <option value="255">Все</option>
                             <?php endif ?>
@@ -234,10 +265,30 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                 </div>
             <?php endif ?>
 
+            <?php /* FZ275: список xp_frmStLstFZ275 (0 — все, -2 — ПГ, -3 — не ПГ).
+                     Виден только в виде 1, в остальных Access ставит 0. */ ?>
+            <?php if ($showFz275): ?>
+                <div class="vh-fgroup">
+                    <div class="vh-fgroup-t">ФЗ-275</div>
+                    <div class="vh-frow">
+                        <select class="vh-inp" name="fz275" onchange="this.form.submit()"
+                            title="ФЗ-275: в Access виден только в виде 1">
+                            <?php if (!$fz275): ?>
+                                <option value="0">(Все записи)</option>
+                            <?php endif ?>
+                            <?php foreach ($fz275 as $z): ?>
+                                <option value="<?= (int)$z['id'] ?>"
+                                    <?= (int)$filter->fz275 === (int)$z['id'] ? 'selected' : '' ?>>
+                                    <?= Html::encode($z['name']) ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
+                    </div>
+                </div>
+            <?php endif ?>
+
             <div class="vh-fgroup">
                 <div class="vh-fgroup-t">Прочее</div>
-                <label class="vh-check"><input type="checkbox" name="fz275" value="1"
-                    <?= (int)$filter->fz275 === 1 ? 'checked' : '' ?> onchange="this.form.submit()"><span>ФЗ-275</span></label>
                 <button type="submit" class="vh-btn" title="Применить фильтры">Применить</button>
             </div>
         </section>

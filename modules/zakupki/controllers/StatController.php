@@ -42,6 +42,7 @@ class StatController extends BaseController
             'firms'  => $res['firms'],
             'managers' => $res['managers'],
             'statuses' => $res['statuses'],
+            'fz275'  => $res['fz275'],
             'rows'   => $res['rows'],
             'error'  => $res['error'],
             'note'   => $res['note'],
@@ -163,30 +164,27 @@ class StatController extends BaseController
      * Общая загрузка: фильтр из GET, футер, список видов, фирм, менеджеров, строк.
      *
      * @param bool $withVids false — не читать список видов (при автообновлении он не нужен)
-     * @return array{filter:StatFilter,footer:array,vids:array,firms:array,managers:array,statuses:array,rows:array,error:?string,note:?string}
+     * @return array{filter:StatFilter,footer:array,vids:array,firms:array,managers:array,statuses:array,fz275:array,rows:array,error:?string,note:?string}
      */
     private function load(bool $withVids = true): array
     {
         $filter = new StatFilter();
         $filter->load(Yii::$app->request->get());
 
-        // Менеджер влияет на Otv и раскраску долгов — читаем из фильтра, а не из StatContext::$manager
-        StatContext::setManager((string)$filter->manager);
+        // Применяем правила по «Виду» (как fnRepaintFormStat в Access): fltZ1, FZ275, даты.
+        $filter->applyViewRules();
 
-        // PickDate/PickDate2 видны только в виде 1 при fltZ1 = 1 (Form_Load frmSt).
-        // Если они скрыты, Access их очищает — не тащим невидимый фильтр в процедуру и ссылки.
-        if ((string)$filter->vid !== '1' || (int)$filter->fltZ1 !== 1) {
-            $filter->dateS = null;
-            $filter->datePo = null;
-        }
+        // Менеджер влияет на Otv и раскраску долгов — читаем из фильтра, а не из StatContext::$manager
+        StatContext::setManager((string)$filter->manager, (string)$filter->vid);
 
         $svc   = new StatService();
         // Футер правит границу цены под валюту вида, поэтому считается до list()
         $footer = $svc->footer($filter);
         $vids  = $withVids ? $svc->vids() : [];
         $firms = $withVids ? $svc->firms() : [];
-        $managers = $withVids ? StatContext::managerList() : [];
+        $managers = $withVids ? StatContext::managerList((string)$filter->vid) : [];
         $statuses = $withVids ? $svc->problemStatuses(1) : [];
+        $fz275 = $withVids ? $svc->fz275List() : [];
         $rows  = [];
         $error = null;
         $note  = null;
@@ -201,6 +199,6 @@ class StatController extends BaseController
             $error = implode(' ', $filter->getFirstErrors());
         }
 
-        return compact('filter', 'footer', 'vids', 'firms', 'managers', 'statuses', 'rows', 'error', 'note');
+        return compact('filter', 'footer', 'vids', 'firms', 'managers', 'statuses', 'fz275', 'rows', 'error', 'note');
     }
 }

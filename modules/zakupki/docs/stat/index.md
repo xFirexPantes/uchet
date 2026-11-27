@@ -2,7 +2,7 @@
 title: Статистика
 access_form: frmSt
 tz: []
-procs: [dbo.xp_GetVidSel, dbo.xp_frmStNewRS1_0, dbo.xp_frmStNewRS2_0, dbo.xp_frmStNewRS3_0, dbo.xp_frmStNewRS4_0, dbo.xp_frmStNewRS5_0, dbo.xp_frmStNewRS7_0, dbo.xp_frmStNewRS9_0, dbo.xp_frmStNewRSa_0, dbo.xp_frmStNewRSb_0, dbo.xp_frmStNewRS1_1, dbo.xp_frmStRS1Analog, dbo.xp_GetWhatFirm, dbo.xp_GetSkladManagersNew, dbo.xp_GetKursByVal, dbo.xp_GetAdr, dbo.xp_SkladUpdPrim, dbo.xp_SkladTrackingUpdComm, dbo.xp_StatWorkWithProblemLstSost, dbo.xp_StatWorkWithProblemUpdSost]
+procs: [dbo.xp_GetVidSel, dbo.xp_frmStNewRS1_0, dbo.xp_frmStNewRS2_0, dbo.xp_frmStNewRS3_0, dbo.xp_frmStNewRS4_0, dbo.xp_frmStNewRS5_0, dbo.xp_frmStNewRS7_0, dbo.xp_frmStNewRS9_0, dbo.xp_frmStNewRSa_0, dbo.xp_frmStNewRSb_0, dbo.xp_frmStNewRS1_1, dbo.xp_frmStRS1Analog, dbo.xp_GetWhatFirm, dbo.xp_GetSkladManagersNew, dbo.xp_SkladTrackingSprLst, dbo.xp_frmStLstFZ275, dbo.xp_GetKursByVal, dbo.xp_GetAdr, dbo.xp_SkladUpdPrim, dbo.xp_SkladTrackingUpdComm, dbo.xp_StatWorkWithProblemLstSost, dbo.xp_StatWorkWithProblemUpdSost]
 perm: form:frmSt
 ---
 
@@ -12,17 +12,37 @@ perm: form:frmSt
 Что делает: список элементов (потребность, наличие, цены, проблемные позиции) по выбранному виду. Каждый вид — своя процедура `dbo.xp_frmStNewRS…`, поэтому состав и порядок колонок меняются вместе с видом.
 
 ## Фильтры
-- **Вид** — список из `exec dbo.xp_GetVidSel`. Смена вида сразу перечитывает список.
+- **Вид** — список из `exec dbo.xp_GetVidSel`. Смена вида сразу перечитывает список и перестраивает набор фильтров (как `fnRepaintFormStat` в Access).
 - **Поиск** — по части текста, как `FindElem` в Access (`%текст%`). Пусто — весь список.
 - **Фирмы** (`f`) — мультивыбор, как кнопка «Выбрать фирму» (`frmFndFirm`, OpenArgs 7). «Все» — `%`, иначе ID через запятую. Это второй параметр процедуры вида. В виде 7 скрыт вместе с `TypeSel`.
 - **Фирма (WhatFirm)** — одиночный список `exec dbo.xp_GetWhatFirm`. В виде 7 скрыт вместе с `TypeSel`.
-- **Менеджер** — `SkladManagers`, `exec dbo.xp_GetSkladManagersNew`. От него зависят ответственный (`Otv`, 3-я колонка) и раскраска долгов (4-я колонка). В виде 7 скрыт вместе с `TypeSel`.
-- **Дата документа** — `PickDate` / `PickDate2`: если заданы обе даты, список строится процедурой `xp_frmStNewRS1_1` (в Access так же: заполненный `PickDate` перекрывает вид). Поля видны только в виде 1 при `fltZ1 = 1`.
+- **Менеджер** — `SkladManagers`, `exec dbo.xp_GetSkladManagersNew`. От него зависят ответственный (`Otv`, 3-я колонка) и раскраска долгов (4-я колонка). В виде `b` список берётся из `exec dbo.xp_SkladTrackingSprLst 1`, значение — первая колонка (текст), `Column(2)` — ID. В виде 7 скрыт вместе с `TypeSel`.
+- **Дата документа** — `PickDate` / `PickDate2`: если заданы обе даты, список строится процедурой `xp_frmStNewRS1_1` (в Access так же: заполненный `PickDate` перекрывает вид). Поля видны только в виде 1 при `fltZ1 = 1`; при скрытии Access очищает значения.
 - **Сырьё** — `TypeSel`: НЕ давальческое / давальческое / не важно. В виде 7 скрыт.
-- **Заказ** — `fltZ1`: «Заказ>0» (суффикс `_0` у имени процедуры) / «Все».
-- **Состояние** — `fltStatProblEl`, `exec dbo.xp_StatWorkWithProblemLstSost 1`. Виден только в виде 1; значение 255 — все состояния.
-- **ФЗ-275** — флажок `FZ275`.
+- **Заказ** — `fltZ1`: «Заказ>0» (суффикс `_0` у имени процедуры) / «Все». В виде `b` подписи другие: «Все» / «Нет счетов более недели».
+- **Состояние** — `fltStatProblEl`, `exec dbo.xp_StatWorkWithProblemLstSost 1`. Виден в видах 1 и 3; значение 255 — все состояния.
+- **ФЗ-275** — список `exec dbo.xp_frmStLstFZ275`: `0` — «(Все записи)», `-2` — «ПГ», `-3` — «не ПГ». Виден только в виде 1, в остальных видах принудительно 0.
 - **Применить** — перечитать список с текущими фильтрами.
+
+### Видимость фильтров по видам
+Правила взяты из `fnRepaintFormStat` (и `fltZ1_AfterUpdate`); в вебе их применяет `StatFilter::applyViewRules()` и методы `show*()`.
+
+| Вид | `fltZ1` | `fltZ1` виден | ФЗ-275 | Состояние | Даты | Фирмы | WhatFirm / Менеджер | Сырьё | `SkladID` |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 1 | да | да | да | да (при `fltZ1=1`) | да | да | да | 0 |
+| 2 | 1 | да | нет | нет | нет | да | да | да | 0 |
+| 3 | 0 | нет | нет | да | нет | да | да | да | 0 |
+| 4 | 1 | да | нет | нет | нет | да | да | да | 0 |
+| 5 | 0 | нет | нет | нет | нет | да | да | да | 0 |
+| 7 | 1 | нет | нет | нет | нет | нет | нет | нет | 0 |
+| 9 | 1 | нет | нет | нет | нет | да | да | да | 0 |
+| a | 1 | нет | нет | нет | нет | да | да | да | 0 |
+| b | 1 | да | нет | нет | нет | да | да | да | -500 |
+
+Даты (`PickDate`/`PickDate2`) видны только в виде 1: `PickDate.Visible = fltZ1 = 1 And lgOp = "1"`.
+
+Для вида `b` подписи `fltZ1` — «Все» / «Нет счетов более недели», заголовок группы не выводится.
+`FndZac` в ветке `b` скрывается, но общий блок после `Select Case` снова её включает (`FndZac.Visible = TypeSel.Visible`, а `TypeSel` скрыт только в виде 7) — поэтому в вебе она видна.
 
 `filt1` / `filt2` / `filt3` (поставщик, город, дата) в Access — фильтры временной таблицы счетов (`#tblTmpSt`, кнопки `filt9` / `filt10`), а не параметры процедуры вида. Переносятся отдельно, вместе с экраном фильтра по счетам.
 
@@ -104,7 +124,8 @@ perm: form:frmSt
 - Кнопки печати, Excel, заказов, перемещения, трекинга и прочие действия формы `frmSt` — вторая очередь.
 
 ## Пока заглушки
-- Ответственный (`Otv`, в Access `SkladManagers.Column(2)`) и признак подсветки долгов (`NeedPaintDolg`, `Column(3)`) читаются из выбранного менеджера (`exec dbo.xp_GetSkladManagersNew`) в классе `StatContext`; для «%» — 0 / false, как в Access. Если процедуры нет или она ничего не вернула — 0 / false.
+- **Непроверено:** параметры процедур видов передаются позиционно (знаки `?`), имена и порядок параметров `xp_frmStNewRS…` ещё не сверены с текстами процедур. До сверки возможны ошибки в вызове.
+- Ответственный (`Otv`, в Access `SkladManagers.Column(2)`) и признак подсветки долгов (`NeedPaintDolg`, `Column(3)`) читаются из выбранного менеджера в классе `StatContext`; для «%» — 0 / false, как в Access. Для вида `b` список менеджеров — `xp_SkladTrackingSprLst 1`. Если процедуры нет или она ничего не вернула — 0 / false.
 - Курс USD (нужен только виду 7) — `xp_GetKursByVal 840`; если в фильтре курс задан, берётся он.
 - Виды `9` и `a` требуют `PrepareMinKolFrom1C` — при выборе показывается сообщение, что вид не перенесён.
 - Форма переноса элемента `frmMoveEl` (двойной щелчок по «ГдеКупил» = «ПЕРЕЛОЖИТЬ НА СКЛАДЕ») не перенесена: показывается сообщение.

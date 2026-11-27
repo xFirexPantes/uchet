@@ -13,13 +13,16 @@ use yii\base\Model;
  *                   "%" — все фирмы; иначе строка ID через запятую. Второй параметр процедуры вида.
  *   manager         SkladManagers: exec dbo.xp_GetSkladManagersNew, ColumnWidths "2268;0;0;0" —
  *                   видно имя, значение первой колонки. DefaultValue "%" — все менеджеры.
+ *                   Для вида b: exec dbo.xp_SkladTrackingSprLst 1.
  *   dateS, datePo   PickDate / PickDate2: заполнены оба → xp_frmStNewRS1_1 (в Access так же)
  *   firm            WhatFirm: exec dbo.xp_GetWhatFirm, ColumnWidths "0;1701" — видно название, значение ID
- *   fz275           флажок FZ275
+ *   fz275           ID ФЗ-275: exec dbo.xp_frmStLstFZ275, ColumnWidths "0;1419;852" —
+ *                   значение ID, по умолчанию 0 («Все»). Видно только в виде 1.
  *   typeSel         Rgm: 1 — НЕ давальческое, 2 — давальческое, 3 — не важно
  *   fltStatProblEl  состояние проблемы: exec dbo.xp_StatWorkWithProblemLstSost 1, значение 255 — все
- *   fltZ1           переключатель «Заказ>0» / «Все»: 1 — «Заказ>0» (суффикс _0 в имени процедуры)
- *   sklad           SkladID (для вида 1: список по складу)
+ *   fltZ1           переключатель «Заказ>0» / «Все» (вид b: «Все» / «Нет счетов более недели»):
+ *                   1 — первый вариант (суффикс _0 в имени процедуры), 0 — второй
+ *   sklad           SkladID (для вида 1: список по складу; для вида b: -500)
  *   bnd, razn, kurs — только для вида 7_0 (нижняя граница, разница, курс)
  *   analog          Analog: в Access не фильтр списка — флажок подформы доп. данных
  *                   (Analog_AfterUpdate → SetRS4DopData). В вебе пока не используется.
@@ -27,6 +30,26 @@ use yii\base\Model;
  * filt1/filt2/filt3 (поставщик, город, дата документа) — фильтры временной таблицы счетов
  * (#tblTmpSt, кнопки filt9/filt10 в Access). В основную процедуру вида они НЕ передаются.
  * Переносятся отдельно, вместе с экраном фильтра по счетам.
+ *
+ * ==========================================================================
+ * Правила по видам — из fnRepaintFormStat (строки 2752–3100 в FrmSt.frm):
+ *
+ *   Вид | fltZ1 | fltZ1 вид | FZ275 вид | Состояние вид | Даты вид | Фирмы вид | WhatFirm/Менеджер вид | Сырьё вид | Склад
+ *   --- | ----- | --------- | --------- | ------------- | -------- | --------- | --------------------- | --------- | ------
+ *   1   | =1    | виден     | виден     | виден         | виден*   | видна     | видны                 | видно     | 0
+ *   2   | =1    | виден     | =0 скрыт  | скрыт         | скрыт    | видна     | видны                 | видно     | 0
+ *   3   | =0    | скрыт     | =0 скрыт  | виден         | скрыт    | видна     | видны                 | видно     | 0
+ *   4   | =1    | виден     | =0 скрыт  | скрыт         | скрыт    | видна     | видны                 | видно     | 0
+ *   5   | =0    | скрыт     | =0 скрыт  | скрыт         | скрыт    | видна     | видны                 | видно     | 0
+ *   7   | =1    | скрыт     | =0 скрыт  | скрыт         | скрыт    | скрыта    | скрыты                | скрыто    | 0
+ *   9   | =1    | скрыт     | =0 скрыт  | скрыт         | скрыт    | видна     | видны                 | видно     | 0
+ *   a   | =1    | скрыт     | =0 скрыт  | скрыт         | скрыт    | видна     | видны                 | видно     | 0
+ *   b   | =1    | виден**   | =0 скрыт  | скрыт         | скрыт    | видна     | видны                 | видно     | -500
+ *
+ * * Даты: PickDate.Visible = fltZ1 = 1 And lgOp = "1" — только вид 1.
+ * ** Для вида b подписи: «Все» (1) / «Нет счетов более недели» (0), заголовок пустой.
+ *   FndZac/WhatFirm/SkladManagers в Case "b" скрываются, но общий блок после Select Case
+ *   (TypeSel.Visible = lgOp <> "7") снова их показывает — поэтому в вебе они видны.
  */
 class StatFilter extends Model
 {
@@ -37,10 +60,10 @@ class StatFilter extends Model
     public $dateS;                  // PickDate: дата документа с
     public $datePo;                 // PickDate2: дата документа по
     public $firm = 0;               // WhatFirm: фирма из exec dbo.xp_GetWhatFirm
-    public $fz275 = 0;              // флажок FZ275
+    public $fz275 = 0;              // ID ФЗ-275 (выбор из xp_frmStLstFZ275)
     public $typeSel = 1;            // TypeSel / Rgm
     public $fltStatProblEl = 255;   // состояние проблемы (виден только в виде 1)
-    public $fltZ1 = 1;              // 1 — «Заказ>0» (суффикс _0), 0 — все
+    public $fltZ1 = 1;              // 1 — первый вариант, 0 — второй (суффикс _0 в имени)
     public $sklad = 0;              // SkladID
     public $bnd;                    // PriceBound: граница цены; при виде 7 — в долларах (dl=1), иначе в рублях
     public $razn = 0;               // Razn: разница, только вид 7
@@ -48,6 +71,27 @@ class StatFilter extends Model
     public $dl = 0;                 // флажок dl: 1 — граница в долларах (Access ставит его для вида 7)
     public $sort = '';              // сортировка списка: имя поля (OrdKod/OrdNaim/… в Access — кнопки-переключатели)
     public $dir = 'asc';            // asc | desc
+
+    /**
+     * Правила по «Виду» — из fnRepaintFormStat и ПолеСоСписком24_AfterUpdate (frmSt).
+     * Ключи (не указан — значение по умолчанию):
+     *   z1      — значение fltZ1, которое Access выставляет сам (нет ключа — оставить выбор);
+     *   z1Visible — виден ли переключатель «Заказ» (по умолчанию true);
+     *   firms   — виден ли выбор фирм FndZac (по умолчанию true);
+     *   what    — видны ли WhatFirm / SkladManagers / TypeSel (по умолчанию true);
+     *   sklad   — принудительное значение SkladID (по умолчанию 0).
+     */
+    private const VIEW_RULES = [
+        '1' => [],
+        '2' => ['z1' => 1],
+        '3' => ['z1' => 0, 'z1Visible' => false],
+        '4' => ['z1' => 1],
+        '5' => ['z1' => 0, 'z1Visible' => false],
+        '7' => ['z1' => 1, 'z1Visible' => false, 'firms' => false, 'what' => false],
+        '9' => ['z1' => 1, 'z1Visible' => false],
+        'a' => ['z1' => 1, 'z1Visible' => false],
+        'b' => ['z1' => 1, 'sklad' => -500],
+    ];
 
     public function formName()
     {
@@ -88,7 +132,7 @@ class StatFilter extends Model
             [['dateS', 'datePo'], 'date', 'format' => 'php:Y-m-d', 'skipOnEmpty' => true],
             ['datePo', 'compare', 'compareAttribute' => 'dateS', 'operator' => '>=',
                 'skipOnEmpty' => true, 'message' => 'Неправильно указаны даты.'],
-            [['fz275', 'dl'], 'boolean'],
+            ['fz275', 'integer'],
             ['fltZ1', 'in', 'range' => [0, 1]],
             ['typeSel', 'in', 'range' => [1, 2, 3]],
             ['fltStatProblEl', 'integer'],
@@ -97,6 +141,40 @@ class StatFilter extends Model
             ['sort', 'string', 'max' => 40],
             ['dir', 'in', 'range' => ['asc', 'desc']],
         ];
+    }
+
+    /**
+     * Применяет правила по «Виду» к фильтру (как fnRepaintFormStat в Access).
+     *
+     * Access при смене вида сам выставляет fltZ1, FZ275 и прячет часть фильтров.
+     * В вебе вид и фильтры приезжают в одной ссылке, поэтому те же правила
+     * применяем здесь: иначе в ссылке может остаться «Вид 3» со «Заказ>0» и процедура
+     * вызовется как xp_frmStNewRS3_0, чего в Access не бывает.
+     */
+    public function applyViewRules(): void
+    {
+        $r = self::VIEW_RULES[$this->vid] ?? [];
+
+        // Принудительное значение fltZ1
+        if (array_key_exists('z1', $r)) {
+            $this->fltZ1 = (int)$r['z1'];
+        }
+
+        // FZ275: только в виде 1, в остальных = 0
+        if ((string)$this->vid !== '1') {
+            $this->fz275 = 0;
+        }
+
+        // Вид b: принудительный склад -500
+        if (array_key_exists('sklad', $r)) {
+            $this->sklad = (int)$r['sklad'];
+        }
+
+        // Даты видны только в виде 1 при fltZ1=1 — Access скрывает и очищает
+        if (!$this->showDates()) {
+            $this->dateS = null;
+            $this->datePo = null;
+        }
     }
 
     /** Вид с суффиксом для имени процедуры: 1 + fltZ1=1 → "1_0". */
@@ -123,5 +201,66 @@ class StatFilter extends Model
             }
         }
         return $names ? implode(', ', $names) : implode(', ', $ids);
+    }
+
+    // ==========================================================================
+    // Вспомогательные методы для видимости фильтров в представлении.
+    // ==========================================================================
+
+    /** Переключатель «Заказ» виден: 1, 2, 4, b (в 3, 5, 7, 9, a Access его скрывает) */
+    public function showZ1(): bool
+    {
+        return (bool)(self::VIEW_RULES[$this->vid]['z1Visible'] ?? true);
+    }
+
+    /** Подписи вариантов fltZ1: [значение 1, значение 0] */
+    public function z1Labels(): array
+    {
+        if ((string)$this->vid === 'b') {
+            return ['Все', 'Нет счетов более недели'];
+        }
+        return ['Заказ>0', 'Все'];
+    }
+
+    /** Заголовок группы fltZ1: у вида b Access очищает подпись «Фильтр по "Заказать"» */
+    public function z1Title(): string
+    {
+        return (string)$this->vid === 'b' ? '' : 'Заказ';
+    }
+
+    /** FZ275 виден: только вид 1 */
+    public function showFz275(): bool
+    {
+        return (string)$this->vid === '1';
+    }
+
+    /** Состояние проблемы (fltStatProblEl) видно: 1 и 3 */
+    public function showStatus(): bool
+    {
+        return in_array((string)$this->vid, ['1', '3'], true);
+    }
+
+    /** Даты PickDate/PickDate2: вид 1 и fltZ1=1 (уже после applyViewRules) */
+    public function showDates(): bool
+    {
+        return (string)$this->vid === '1' && (int)$this->fltZ1 === 1;
+    }
+
+    /**
+     * Кнопка выбора фирм (FndZac) видна: все виды, кроме 7.
+     *
+     * В Case "b" Access сначала ставит FndZac.Visible = False, но общий блок после
+     * Select Case снова включает её (Me!FndZac.Visible = Me!TypeSel.Visible, а TypeSel
+     * скрыт только в виде 7) — поэтому в вебе для b она видна.
+     */
+    public function showFirms(): bool
+    {
+        return (bool)(self::VIEW_RULES[$this->vid]['firms'] ?? true);
+    }
+
+    /** WhatFirm / менеджер / «Сырьё» видны: не 7 */
+    public function showWhat(): bool
+    {
+        return (bool)(self::VIEW_RULES[$this->vid]['what'] ?? true);
     }
 }

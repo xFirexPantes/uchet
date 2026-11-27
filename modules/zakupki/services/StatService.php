@@ -189,6 +189,30 @@ class StatService
     }
 
     /**
+     * Список значений ФЗ-275: exec dbo.xp_frmStLstFZ275.
+     *
+     * Процедура возвращает 0 «(Все записи)», -2 «ПГ», -3 «не ПГ» (ORDER BY ID desc).
+     * В Access это ComboBox с ColumnWidths "0;1419;852": видно текст, значение — ID.
+     * Список виден только в виде 1; в остальных видах Access ставит FZ275 = 0.
+     *
+     * @return array<int, array{id:int, name:string}>
+     */
+    public function fz275List(): array
+    {
+        try {
+            $rows = $this->proc('dbo.xp_frmStLstFZ275')->queryAll(\PDO::FETCH_NUM);
+        } catch (\Throwable $e) {
+            Yii::warning('xp_frmStLstFZ275: ' . $e->getMessage(), __METHOD__);
+            return [];
+        }
+
+        return array_map(static fn($r) => [
+            'id'   => (int)($r[0] ?? 0),
+            'name' => (string)($r[1] ?? ''),
+        ], $rows);
+    }
+
+    /**
      * Колонки подформы аналогов (subFrmStAnalog): [поле => [подпись, ширина в твипах, вправо]].
      *
      * Порядок — TabIndex из SaveAsText; ширина в твипах делится на 15 → px, как в Access.
@@ -313,7 +337,7 @@ class StatService
         $otv  = StatContext::otv();                       // SkladManagers.Column(2)
         $rgm  = (int)$f->typeSel;
         $firm = (int)$f->firm;                            // WhatFirm: значение передаётся всегда, видно только виду 1_0
-        $fz   = (int)$f->fz275 === 1 ? -1 : 0;            // флажок Access: True = -1
+        $fz   = (int)$f->fz275;                           // xp_frmStLstFZ275: 0 — все, -2 — ПГ, -3 — не ПГ
         $flt  = (int)$f->fltStatProblEl;                  // fltStatProblEl.DefaultValue = 255
 
         try {

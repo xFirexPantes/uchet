@@ -26,14 +26,21 @@ class StatContext
     /** Выбранный менеджер (значение первой колонки xp_GetSkladManagersNew). */
     private static string $manager = self::DEFAULT_MANAGER;
 
-    /** Ответы на запрос списка менеджеров в пределах одного запроса. */
-    private static ?array $managers = null;
+    /** Вид списка: в виде b менеджеры берутся из xp_SkladTrackingSprLst 1. */
+    private static string $vid = '';
 
-    /** Выбрать менеджера: значение из первой колонки списка (по умолчанию "%"). */
-    public static function setManager(string $value): void
+    /** Ответы на запрос списка менеджеров в пределах одного запроса (по процедуре). */
+    private static array $managers = [];
+
+    /**
+     * Выбрать менеджера: значение из первой колонки списка (по умолчанию "%").
+     *
+     * @param string $vid вид списка: для «b» список менеджеров другой (xp_SkladTrackingSprLst 1)
+     */
+    public static function setManager(string $value, string $vid = ''): void
     {
         self::$manager = $value !== '' ? $value : self::DEFAULT_MANAGER;
-        self::$managers = null;
+        self::$vid = $vid;
     }
 
     /** Ответственный (Otv). В Access — SkladManagers.Column(2). Для «%» это 0, как и было. */
@@ -78,43 +85,50 @@ class StatContext
     }
 
     /**
-     * Список менеджеров для выпадающего списка: exec dbo.xp_GetSkladManagersNew.
-     * Возвращает массив ['value' => '...', 'name' => '...'].
+     * Список менеджеров для выпадающего списка.
+     *
+     * Обычные виды: exec dbo.xp_GetSkladManagersNew, ColumnWidths "2268;0;0;0" — видно имя,
+     * значение первой колонки. Вид b: exec dbo.xp_SkladTrackingSprLst 1, где первая колонка —
+     * текст (fld1), вторая — тот же текст, третья — ID, четвёртая — пусто.
      *
      * @return array<int, array{value:string, name:string}>
      */
-    public static function managerList(): array
+    public static function managerList(string $vid = ''): array
     {
         $out = [];
-        foreach (self::managerRows() as $r) {
+        foreach (self::managerRows($vid) as $r) {
             $val = (string)($r[0] ?? '');
             $out[] = ['value' => $val, 'name' => $val];
         }
         return $out;
     }
 
-    /** Строка выбранного менеджера из exec dbo.xp_GetSkladManagersNew (по номерам колонок). */
+    /** Строка выбранного менеджера из списка менеджеров (по номерам колонок). */
     private static function managerRow(): array
     {
-        foreach (self::managerRows() as $row) {
+        foreach (self::managerRows(self::$vid) as $row) {
             if ((string)($row[0] ?? '') === self::$manager) return $row;
         }
         return [];
     }
 
-    /** Все строки списка менеджеров; запрос — один раз на запрос страницы. */
-    private static function managerRows(): array
+    /** Все строки списка менеджеров; запрос — один раз на вид в пределах запроса страницы. */
+    private static function managerRows(string $vid = ''): array
     {
-        if (self::$managers === null) {
+        $key = $vid === 'b' ? 'b' : 'main';
+        if (!array_key_exists($key, self::$managers)) {
+            $sql = $key === 'b'
+                ? 'EXEC dbo.xp_SkladTrackingSprLst 1'      // Case "b" fnRepaintFormStat
+                : 'EXEC dbo.xp_GetSkladManagersNew';
             try {
-                self::$managers = Yii::$app->db
-                    ->createCommand('SET NOCOUNT ON; EXEC dbo.xp_GetSkladManagersNew')
+                self::$managers[$key] = Yii::$app->db
+                    ->createCommand('SET NOCOUNT ON; ' . $sql)
                     ->queryAll(\PDO::FETCH_NUM);
             } catch (\Throwable $e) {
-                Yii::warning('xp_GetSkladManagersNew: ' . $e->getMessage(), __METHOD__);
-                self::$managers = [];
+                Yii::warning($sql . ': ' . $e->getMessage(), __METHOD__);
+                self::$managers[$key] = [];
             }
         }
-        return self::$managers;
+        return self::$managers[$key];
     }
 }
