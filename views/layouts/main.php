@@ -13,7 +13,8 @@ $this->render('_head');
 ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html>
-<html lang="<?= Yii::$app->language ?>" class="h-100" data-bs-theme="light">
+<html lang="<?= Yii::$app->language ?>" class="h-100" data-bs-theme="light"
+      data-boot="<?= !empty($this->params['boot']) ? '1' : '0' ?>">
 <head>
     <?php $this->head() ?>
     <title><?= Html::encode($this->title) ?></title>

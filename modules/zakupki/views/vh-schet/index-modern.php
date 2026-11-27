@@ -20,6 +20,9 @@ $this->title = 'Входящие счета';
 // Контейнер макета — во всю ширину окна (класс vh-wide ставит views/layouts/main.php
 // ещё на сервере: иначе список сначала рисуется узким и «разворачивается» скриптом).
 $this->params['wide'] = true;
+// Не показывать недорисованное: до готовности раскладки экран скрыт, виден только
+// индикатор (web/js/busy.js, data-boot в views/layouts/main.php).
+$this->params['boot'] = true;
 $oneSch = $filter->id > 0;                                                  // открыта на один счёт (OpenArgs)
 $filterApplied = $filter->dateS || $filter->datePo || $filter->nsch !== '' || (string)$filter->firma !== '';  // как IsApplyFlt
 ?>
