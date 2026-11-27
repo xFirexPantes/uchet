@@ -30,7 +30,7 @@ class StatColumns
         'MainPlace', 'Элемент', 'Заказано', 'ЦенаОптовая', 'FirstName', 'ProblKol', 'UchetID',
         'SharpName', 'NmeCat', 'CreatorCode', 'ExistMove', 'UPKoef', 'UpKoef', 'MinToBuy', 'TS',
         'FullDolg', 'KolInRes', 'SrcProblEl', 'KolZak', 'Свободно', 'DtaPost', 'IsExactDate',
-        'MinStartZak', 'AppearMinTxt', 'AppearMinByAdd', 'NedopolByNakl', 'Avt', 'IsDelayed',
+        'MinStartZak', 'AppearMinByAdd', 'NedopolByNakl', 'Avt', 'IsDelayed',
         'WhatFirmTxt', 'WF', 'NU', 'flgNU', 'Активный', 'Примечание', 'Серия',
     ];
 
@@ -64,6 +64,7 @@ class StatColumns
         'Кол'            => ['Кол-во', 80, true],
         'txtSV'          => ['Заказать', 80, true],
         'OrderEls'       => ['Заказать', 80, true],
+        'AppearMinTxt'   => ['Миним. сработал', 90, true],
         'OrderKat'       => ['Катушка', 80, true],
         'KolPok'         => ['КП', 50, false],
         'Недополучено'   => ['Недопол.', 80, true],
@@ -110,7 +111,7 @@ class StatColumns
         ['Долг', 'МинКоличество', 'Резерв'],
         ['FZ275Kol'],
         ['Количество', 'Кол'],
-        ['txtSV', 'OrderEls'],
+        ['txtSV', 'OrderEls', 'AppearMinTxt'],
         ['OrderKat'],
         ['KolPok'],
         ['Недополучено'],
@@ -163,6 +164,7 @@ class StatColumns
             '1' => 'Заказать', '2' => 'Заказать', '3' => 'Долг', '4' => 'Заказать',
             '7' => 'Заказать', '9' => 'Заказать', 'a' => 'Заказать',
         ],
+        'AppearMinTxt' => ['b' => 'Миним. сработал'],
         'МинКоличество' => [
             '2' => 'Минимум', '3' => 'Минимум', '9' => 'Мин.ПАНТЕС', 'a' => 'Мин.ТОРЭКС',
             'b' => 'Мин. срок годн',
