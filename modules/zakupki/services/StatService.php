@@ -437,6 +437,12 @@ class StatService
             return ['rows' => [], 'error' => null];
         }
 
+        // Процедура отдаёт набор только в ветке @Rgm in ('1','5','8'); для остальных
+        // видов SELECT не выполняется, и запрос вернул бы ошибку «нет полей».
+        if (!in_array($vid, ['1', '5', '8'], true)) {
+            return ['rows' => [], 'error' => null];
+        }
+
         try {
             $rows = $this->proc('dbo.xp_SubMinimumFilter ?, ?', [$skladId, $vid])->queryAll();
         } catch (\Throwable $e) {

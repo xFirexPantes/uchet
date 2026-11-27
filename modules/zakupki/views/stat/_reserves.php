@@ -38,8 +38,12 @@ if ($error): ?>
             <tr>
                 <?php foreach ($cols as [$f, , , $right]):
                     $v = $r[$f] ?? '';
-                    if (is_bool($v)) $v = $v ? 'да' : ''; ?>
-                    <td<?= $right ? ' style="text-align:right"' : '' ?>
+                    if (is_bool($v)) $v = $v ? 'да' : '';
+                    // В Access «В» и «Пробл» красные (ForeColor = 255), «Пробл» ещё и жирный
+                    $mark  = in_array($f, ['В', 'IsGuilty'], true) && (string)$v === '!';
+                    $style = $right ? 'text-align:right' : '';
+                    if ($mark) $style .= ($style !== '' ? ';' : '') . 'color:#c00;font-weight:700'; ?>
+                    <td<?= $style !== '' ? ' style="' . $style . '"' : '' ?>
                         title="<?= Html::encode((string)$v) ?>"><?= Html::encode(is_scalar($v) ? (string)$v : '') ?></td>
                 <?php endforeach ?>
             </tr>

@@ -3,6 +3,7 @@ namespace app\modules\zakupki\controllers;
 
 use app\controllers\BaseController;
 use app\modules\zakupki\models\StatFilter;
+use app\modules\zakupki\services\StatColumns;
 use app\modules\zakupki\services\StatContext;
 use app\modules\zakupki\services\StatService;
 use Yii;
@@ -98,7 +99,7 @@ class StatController extends BaseController
         return [
             'html'  => $this->renderPartial('_reserves', [
                 'rows'  => $res['rows'],
-                'cols'  => \app\modules\zakupki\services\StatColumns::reserveColumns($res['rows']),
+                'cols'  => StatColumns::reserveColumns($res['rows'], $vid),
                 'error' => $res['error'],
             ]),
             'count' => count($res['rows']),
