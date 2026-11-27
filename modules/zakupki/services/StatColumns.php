@@ -155,8 +155,6 @@ class StatColumns
      */
     public const RESERVE_META = [
         'IsGuilty'      => ['Пробл', 45, false],
-    public const RESERVE_META = [
-        'IsGuilty'      => ['Пробл', 45, false],
         'В'             => ['В', 30, false],
         'Дата'          => ['Дата', 70, false],
         'CalcPrc'       => ['Расч.ст-ть,$', 70, true],
