@@ -351,6 +351,7 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                         'cols'  => $cols,
                         'bnd'   => $footer['bnd'],
                         'vid'   => (string)$filter->vid,
+                        'paint' => StatContext::needPaintDolg(),
                         'empty' => $error ? 'Список не загружен' : 'Нет записей, удовлетворяющих условию',
                     ]) ?>
                     </tbody>

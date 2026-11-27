@@ -16,6 +16,7 @@
  * @var float  $bnd    граница цены (PriceBound) в валюте вида; 0 — не задана
  * @var string $empty  текст для пустого списка
  * @var string $vid    вид списка: часть правил есть только в виде 1 или только в виде b
+ * @var bool   $paint  FlgPaintDolg (признак менеджера): включает раскраску долгов MakeColorDolgStat
  */
 
 use yii\helpers\Html;
@@ -24,6 +25,7 @@ use yii\helpers\Html;
 $css = static fn($c) => ($c = (int)$c) ? sprintf('#%02x%02x%02x', $c & 255, ($c >> 8) & 255, ($c >> 16) & 255) : '';
 $bnd = (float)($bnd ?? 0);
 $vid = (string)($vid ?? '');
+$paint = (bool)($paint ?? false);
 
 if (!$rows): ?>
     <tr>
@@ -86,15 +88,12 @@ if (!$rows): ?>
             }
 
             // --- Условное форматирование колонок frmMinimum (ConditionalFormat14) ---
-            // Поле18 / ПримечаниеДолг: [DfltIsp] = 1 → фон #ccffff
+            // Поле18 / ПримечаниеДолг: [DfltIsp] = 1 → BackColor 16777164 (#ccffff)
             if ($f === 'ПримечаниеДолг' && (int)($r['DfltIsp'] ?? 0) === 1) {
-                $style[] = 'background:' . $css(0xccffff);
-            } elseif ($f === 'Количество') {
-                // IsBoth: 4 — оба склада, 1 — совпадение; отрицательное количество — оранжевый
-                $ib = (int)($r['IsBoth'] ?? 0);
-                if ($ib === 4)      $style[] = 'background:' . $css(0x99ccff);
-                elseif ($ib === 1)  $style[] = 'background:' . $css(0xccffff);
-                elseif ((float)($r[$f] ?? 0) < 0) $style[] = 'background:' . $css(0xffcc99);
+                $style[] = 'background:' . $css(16777164);
+            } elseif ($f === 'МинКоличество' && $paint && (int)($r['IsBoth'] ?? 0) === 1) {
+                // MakeColorDolgStat: только при FlgPaintDolg (признак менеджера)
+                $style[] = 'background:' . $css(16777164);
             }
 
             if ($c !== '') $style[] = "color:$c";
