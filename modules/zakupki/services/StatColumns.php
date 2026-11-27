@@ -154,84 +154,42 @@ class StatColumns
      * @var array<string, array{0:string,1:int,2:bool}>
      */
     public const RESERVE_META = [
-        'IsGuilty'      => ['Пробл', 45, false],
-        'В'             => ['В', 30, false],
-        'Дата'          => ['Дата', 70, false],
-        'CalcPrc'       => ['Расч.ст-ть,$', 70, true],
-        'DtaPost'       => ['Жел.дата пост.р-ва', 70, false],
-        'PlandateCmplx' => ['План.старт', 75, false],
-        'Trg'           => ['Таргет,USD', 70, true],
-        'MaxPrc'        => ['Максим. цена закуп.,USD', 85, true],
-        'Razn'          => ['Осталось', 70, false],
-        'Название темы' => ['Название темы', 150, false],
-        'Prim'          => ['Примечание', 160, false],
-        'Firma'         => ['Заказчик', 130, false],
-        'Isp'           => ['Исп-ль', 80, false],
-        'INN'           => ['ИНН', 90, false],
-        'ApplyArea'     => ['Область применения', 110, false],
-        'ToxicLvl'      => ['Уровень токсичности', 110, false],
-        'Ответственный' => ['Ответственный', 100, false],
-        'OtvIng'        => ['Отв.техподдержки', 100, false],
-        'Изделия'       => ['Изделий', 70, true],
-        'Резерв'        => ['Кол-во', 60, true],
-        'AllKol'        => ['Всего', 60, true],
-        'DisagreeDate'  => ['Срок не согл.', 90, false],
-        'FZ275'         => ['ФЗ275.', 55, false],
-        'NumZakas'      => ['Заказ', 100, false],
-    ];
-
-    /**
-     * Порядок колонок резервов — ColumnOrder формы после Form_Load.
-     *
-     * В макете CalcPrc.ColumnOrder = 4, из-за чего DtaPost и следующие сдвигаются
-     * на единицу; здесь уже итоговый порядок отображения.
-     */
-    public const RESERVE_ORDER = [
-        'IsGuilty', 'В', 'Дата', 'CalcPrc', 'DtaPost', 'PlandateCmplx', 'Trg', 'MaxPrc',
-        'Razn', 'Название темы', 'Prim', 'Firma', 'Isp', 'INN', 'ApplyArea', 'ToxicLvl',
-        'Ответственный', 'OtvIng', 'Изделия', 'Резерв', 'AllKol', 'DisagreeDate', 'FZ275', 'NumZakas',
-    ];
-
-    /**
-     * Служебные поля резервов.
-     *
-     * Colr скрыт в frmSt (ColumnHidden = True), Idres/IDProcess — технические ключи,
-     * IsExactDate нужен только для вычисления «В».
-     */
-    public const RESERVE_HIDDEN = ['Colr', 'Idres', 'IDRes', 'IDProcess', 'IsExactDate'];
-
-    /**
-     * Колонки резервов, скрываемые по виду (fnRepaintFormStat: f = lgOp = "b").
-     *
-     * При виде b в подформе скрыты все «закупочные» колонки; остаются Пробл, Дата,
-     * Осталось, Примечание, Заказчик, Ответственный, Отв.техподдержки и Заказ.
-     */
-    public const RESERVE_HIDDEN_IN = [
-        'b' => [
-            'Название темы', 'DtaPost', 'Trg', 'MaxPrc', 'Изделия', 'Резерв', 'AllKol',
-            'PlandateCmplx', 'В', 'CalcPrc', 'INN', 'ToxicLvl', 'ApplyArea', 'Isp',
-            'DisagreeDate', 'FZ275',
-        ],
-    ];
+        'Дата'          => ['Дата', 90, false],
+        'В'             => ['Точ.', 40, false],
+        'Razn'          => ['Осталось', 90, false],
+        'CalcPrc'       => ['Расч.ст-ть, $', , 90, true],
+        'Trg'           => ['Таргет,USD', 90, true],
+        'MaxPrc'        => ['Макс. цена закуп.,USD', 110, true],
+        'Название темы' => ['Название темы', 160, false],
+        'Prim'          => ['Примечание', 200, false],
+        'Firma'         => ['Заказчик', 140, false],
+        'DisagreeDate'  => ['Срок не согл.', 100, false],
+        'PlandateCmplx' => ['План.старт', 100, false],
+        'FZ275'         => ['ФЗ275.', 80, false],
+        'Ответственный' => ['Ответственный', 110, false],
+        'INN'           => ['ИНН', 100, false],
+        'Isp'           => ['Исп-ль', 90, false],
+        'OtvIng'        => ['Отв.техподдержки', 120, false],
+        'Изделия'       => ['Изделий', 80, true],
+        'Резерв'        => ['Кол-во', 80, true],
+        'AllKol'        => ['Всего', 80, true],
+        'ToxicLvl'      => ['Уровень токсичности', 120, false],
+        'NumZakas'      => ['Заказ', 80, false],
+        'ApplyArea'     => ['Область применения', 140, false],
+     ];
 
     /**
      * Колонки резервов по фактическим полям результата.
      *
-     * @param array  $rows строки источника
-     * @param string $vid  вид списка; влияет только на скрытие колонок (вид b)
+     * @param array $rows строки источника
      * @return array<int, array{0:string,1:string,2:int,3:bool}> [поле, подпись, ширина, вправо]
      */
-    public static function reserveColumns(array $rows, string $vid = ''): array
+    public static function reserveColumns(array $rows): array
     {
-        $hidden = self::RESERVE_HIDDEN;
-        if ($vid !== '') {
-            $hidden = array_merge($hidden, self::RESERVE_HIDDEN_IN[$vid] ?? []);
-        }
-
         $fields = [];
         foreach ($rows as $r) {
             foreach (array_keys($r) as $k) {
-                if (!in_array($k, $hidden, true)) $fields[$k] = true;
+                if (!in_array($k, self::RESERVE_HIDDEN, true)) $fields[$k] = true;
             }
         }
 
@@ -291,4 +249,30 @@ class StatColumns
         }
         return $out;
     }
+
+
+
+    /** Порядок колонок резервов, как в форме (ColumnOrder, затем Left). */
+    public const RESERVE_ORDER = [
+        'Дата', 'В', 'Razn', 'CalcPrc', 'Trg', 'MaxPrc', 'Название темы', 'Prim',
+        'Firma', 'DisagreeDate', 'PlandateCmplx', 'FZ275', 'Ответственный', 'INN',
+        'Isp', 'OtvIng', 'Изделия', 'Резерв', 'AllKol', 'ToxicLvl', 'NumZakas', 'ApplyArea',
+    ];
+
+    /**
+     * Служебные поля резервов.
+     *
+     * Colr — скрыт в frmSt (ColumnHidden = True), Idres/IDProcess/DtaPost/IsExactDate —
+     * технические: DtaPost и IsExactDate нужны только для вычисления «В» и проверок VBA,
+     * IDProcess — для отметок «работа с закупкой элемента» в frmMinimum.
+     */
+    public const RESERVE_HIDDEN = ['Colr', 'Idres', 'IDRes', 'IDProcess', 'DtaPost', 'IsExactDate', 'IsGuilty'];
+
+    /**
+     * Колонки резервов по фактическим полям результата.
+     *
+     * @param array $rows строки источника
+     * @return array<int, array{0:string,1:string,2:int,3:bool}> [поле, подпись, ширина, вправо]
+     */
+   
 }
