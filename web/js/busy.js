@@ -196,8 +196,11 @@
         };
     }
 
-    // Возврат из bfcache — страница осталась живой, окно не нужно
-    window.addEventListener('pageshow', () => {
+    // Возврат из bfcache (кнопка «назад»): страница осталась живой, окно не нужно.
+    // Только при persisted — при обычной загрузке pageshow тоже срабатывает (сразу
+    // после load), и здесь он снял бы заставку раньше отрисовки, дав белый кадр.
+    window.addEventListener('pageshow', ev => {
+        if (!ev.persisted) return;
         active = 0;
         document.documentElement.classList.remove('vh-boot');
         hide();
