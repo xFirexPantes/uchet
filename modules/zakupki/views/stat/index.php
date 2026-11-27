@@ -563,6 +563,10 @@ input[type=date].vh-inp { padding:0 .2rem; }
 /* Текущая запись: в Access OnCurrent красит строку по Код = CurKd */
 .vh-list tbody tr.sel td { background:#d6ecf7; box-shadow:inset 3px 0 var(--vh-blue); }
 .vh-list .empty { color:#7d9aa7; font-style:italic; padding:.5rem .6rem !important; }
+/* Резервы: условное форматирование подформы SubMinimFilter (ConditionalFormat14)
+   на колонках «Название темы» и «Пробл»: [DtaPost]>Date() — пурпурный, =Date() — оливковый. */
+.vh-list td.res-future { background:rgba(255,0,255,.16); }
+.vh-list td.res-today { background:rgba(128,128,0,.20); }
 .empty { color:#7d9aa7; font-style:italic; padding:.5rem .6rem; }
 
 /* Футер frmMinimum: граница цены, курс, разница, «без тех.запаса» */
