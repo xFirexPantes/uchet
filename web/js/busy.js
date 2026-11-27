@@ -222,7 +222,7 @@
             root.classList.remove('vh-boot');
             hide();
         };
-        document.addEventListener('DOMContentLoaded', () => show());
+        document.addEventListener('DOMContentLoaded', () => window.Busy.show());
         window.addEventListener('load', () => requestAnimationFrame(() => requestAnimationFrame(reveal)));
         setTimeout(reveal, 4000);
     }
