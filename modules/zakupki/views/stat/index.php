@@ -469,27 +469,21 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                 <p class="vh-hint">Цвет фона или текста в столбце подсказывает состояние элемента.</p>
                 <div class="vh-hints">
                     <div class="vh-hints-col">
-                        <div class="vh-hints-t">Недополучено</div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-green"></span><span class="vh-sw-t sw-green">На Сокол</span></div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t vh-b">жирный — есть недополучение</span></div>
+                        <div class="vh-hints-t">Наименование</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t vh-b">жёсткий срок поставки</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-green"></span><span class="vh-sw-t sw-green">срок поставки меньше текущей даты</span></div>
                     </div>
                     <div class="vh-hints-col">
                         <div class="vh-hints-t">Примечание</div>
                         <div class="vh-hint-row"><span class="vh-sw sw-sky"></span><span class="vh-sw-t sw-sky">На Торэкс</span></div>
                     </div>
                     <div class="vh-hints-col">
-                        <div class="vh-hints-t">Изготовитель (вид 1)</div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-green"></span><span class="vh-sw-t sw-green">в работе</span></div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-yellow"></span><span class="vh-sw-t sw-yellow">тех. запас</span></div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-blue"></span><span class="vh-sw-t sw-blue">контроль сроков</span></div>
-                    </div>
-                    <div class="vh-hints-col">
                         <div class="vh-hints-t">Код</div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-blue"></span><span class="vh-sw-t sw-blue">можно забирать</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-blue"></span><span class="vh-sw-t sw-blue">элемент можно забирать</span></div>
                     </div>
                     <div class="vh-hints-col">
                         <div class="vh-hints-t">Заказать</div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-red"></span><span class="vh-sw-t sw-red">заказать (число &gt; 0)</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-red"></span><span class="vh-sw-t sw-red">число &gt; 0 — надо заказать</span></div>
                     </div>
                     <div class="vh-hints-col">
                         <div class="vh-hints-t">Дешевле</div>
@@ -497,18 +491,35 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                     </div>
                     <div class="vh-hints-col">
                         <div class="vh-hints-t">Покупать в</div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-sky"></span><span class="vh-sw-t sw-sky">перенос на складе</span></div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-peach"></span><span class="vh-sw-t sw-peach">входной контроль</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-sky"></span><span class="vh-sw-t sw-sky">задание на перенос для склада</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-peach"></span><span class="vh-sw-t sw-peach">для участка входного контроля</span></div>
                     </div>
                     <div class="vh-hints-col">
-                        <div class="vh-hints-t">Кол-во / Минимум</div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-yellow"></span><span class="vh-sw-t sw-yellow">проблемные элементы</span></div>
+                        <div class="vh-hints-t">Кол-во</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-yellow"></span><span class="vh-sw-t sw-yellow">есть проблемные элементы</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Минимум</div>
                         <div class="vh-hint-row"><span class="vh-sw sw-sky"></span><span class="vh-sw-t sw-sky">совпадение складов</span></div>
                     </div>
                     <div class="vh-hints-col">
-                        <div class="vh-hints-t">Аналог / Корпус</div>
+                        <div class="vh-hints-t">Аналог</div>
                         <div class="vh-hint-row"><span class="vh-sw sw-azure"></span><span class="vh-sw-t sw-azure">нет аналога</span></div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-violet"></span><span class="vh-sw-t sw-violet">срок поставки просрочен</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Корпус</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-violet"></span><span class="vh-sw-t sw-violet">в резерв не заказан более недели</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Недополучено (вид 1)</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-green"></span><span class="vh-sw-t sw-green">доставка на Сокол</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t vh-b">жирный — есть недополучение</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Изготовитель (вид 1)</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-green"></span><span class="vh-sw-t sw-green">в работе</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-yellow"></span><span class="vh-sw-t sw-yellow">закупка тех.запаса</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-blue"></span><span class="vh-sw-t sw-blue">контроль сроков</span></div>
                     </div>
                     <div class="vh-hints-col">
                         <div class="vh-hints-t">Строка</div>
@@ -661,7 +672,9 @@ input[type=date].vh-inp { padding:0 .2rem; }
 .vh-modal-x:hover { background:var(--vh-blue); border-color:var(--vh-blue); color:#fff; }
 .vh-modal-body { padding:.6rem .75rem; overflow:auto; }
 .vh-hint { margin:0 0 .5rem; font-size:.72rem; color:#5b8598; }
-.vh-hints { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:.55rem .9rem; }
+/* Легенда — списком по колонкам, как «Цвета в списке счетов» (vh-schet) */
+.vh-hints { display:grid; grid-template-columns:1fr; gap:.55rem; }
+#stHintsBox .vh-modal-box { max-width:560px; }
 .vh-hints-col { min-width:0; }
 .vh-hints-t { font-size:.68rem; font-weight:600; color:var(--vh-ink); text-transform:uppercase;
     letter-spacing:.03em; border-bottom:1px solid var(--vh-blue-b); padding-bottom:.15rem; margin-bottom:.25rem; }
