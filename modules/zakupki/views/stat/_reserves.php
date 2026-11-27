@@ -9,6 +9,9 @@
  * Условное форматирование формы (ConditionalFormat14 у «Название темы» и «Пробл»):
  * [DtaPost] > Date() — пурпурный фон, [DtaPost] = Date() — оливковый.
  *
+ * data-idres на строке нужен кнопке «Пересчёт таргета»: Access берёт IDRes текущей
+ * записи подформы (первая строка набора, как Me!SubMinimFilter!IDRes).
+ *
  * @var array $rows
  * @var array $cols  колонки из StatColumns::reserveColumns()
  * @var string|null $error
@@ -43,7 +46,7 @@ if ($error): ?>
             // DtaPost приходит датой; сравниваем только день, как Date() в Access
             $dta = substr((string)($r['DtaPost'] ?? ''), 0, 10);
             $day = $dta === '' ? '' : ($dta > $today ? 'res-future' : ($dta === $today ? 'res-today' : '')); ?>
-            <tr>
+            <tr data-idres="<?= (int)($r['IDRes'] ?? 0) ?>">
                 <?php foreach ($cols as [$f, , , $right]):
                     $v = $r[$f] ?? '';
                     if (is_bool($v)) $v = $v ? 'да' : '';

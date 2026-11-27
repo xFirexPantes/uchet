@@ -410,7 +410,14 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
     <section class="vh-panel" id="stReserves">
         <div class="vh-panel-head">
             <span>Резервы <span class="vh-an-code" id="stResCode"></span></span>
-            <span class="vh-tools" id="stResInfo">выберите строку в списке</span>
+            <span class="vh-tools">
+                <span id="stResInfo">выберите строку в списке</span>
+                <?php /* TrgRecalc: пересчёт таргета по резерву; при виде b скрыта (fnRepaintFormStat) */ ?>
+                <?php if ((string)$filter->vid !== 'b'): ?>
+                    <button type="button" class="vh-btn vh-btn-xs" id="stTrgRecalc"
+                            title="Обновить данные таргета и целевого предложения по всем элементам, входящим в резерв">↻ Таргет</button>
+                <?php endif ?>
+            </span>
         </div>
         <div class="vh-list-scroll" id="stResBox"></div>
     </section>
@@ -617,6 +624,7 @@ $this->registerJs('window.ST = ' . Json::encode([
     'rowsUrl' => Url::to(['rows']),
     'analogsUrl' => Url::to(['analogs']),        // аналоги текущего элемента (subFrmStAnalog)
     'reservesUrl' => Url::to(['reserves']),      // резервы текущего элемента (SubMinimFilter)
+    'trgRecalcUrl' => Url::to(['trg-recalc']),   // пересчёт таргета по резерву (TrgRecalc)
     'statusesUrl' => Url::to(['statuses']),      // состояния проблемы (frmfndStatus, OpenArgs 25)
     'actUrl' => Url::to(['act']),                // сохранение примечания / комментария / состояния
     'cardUrl' => Url::to(['/sklad/elem/view']),   // карточка элемента (Fobnovlen1) — модуль «Склад»
@@ -732,6 +740,47 @@ $this->registerJs(<<<'JS'
             x.textContent = 'Не удалось получить резервы: ' + e.message;
             box.replaceChildren(x);
         }
+    }
+
+    // TrgRecalc_Click: нет резервов — «Не выбран резерв»; IDRes <= 0 — «Не удается найти резерв»;
+    // иначе номер сводной таблицы (по умолчанию 1), подтверждение и xp_UpdTrgRec.
+    const trgBtn = document.getElementById('stTrgRecalc');
+    if (trgBtn && cfg.trgRecalcUrl) {
+        trgBtn.addEventListener('click', async () => {
+            const box = document.getElementById('stResBox');
+            const info = document.getElementById('stResInfo');
+            const rows = box ? box.querySelectorAll('#stResList tbody tr') : [];
+            if (!rows.length) { alert('Не выбран резерв'); return; }
+
+            const idres = parseInt(rows[0].dataset.idres || '0', 10);
+            if (!(idres > 0)) { alert('Не удается найти резерв'); return; }
+
+            const raw = prompt('Укажите номер сводной таблицы', '1');
+            if (raw === null) return;
+            const numtbl = parseInt(raw, 10);
+            if (!(numtbl > 0)) return;
+            if (!confirm('Обновить данные таргета и целевого предложения по всем элементам, входящим в резерв?')) return;
+
+            trgBtn.disabled = true;
+            try {
+                const r = await fetch(cfg.trgRecalcUrl, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest',
+                               'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ idres: idres, numtbl: numtbl }).toString(),
+                });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const d = await r.json();
+                if (!d.ok) { alert(d.error || 'Не удалось обновить таргет'); return; }
+                // Access после UpdTrgRec перезапрашивает подформу резервов
+                await loadReserves(cur);
+                if (info) info.textContent = 'таргет обновлён';
+            } catch (e) {
+                alert('Не удалось обновить таргет: ' + e.message);
+            } finally {
+                trgBtn.disabled = false;
+            }
+        });
     }
 
     // OnCurrent: щелчок по строке делает её текущей

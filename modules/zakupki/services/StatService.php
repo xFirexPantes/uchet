@@ -509,6 +509,53 @@ class StatService
     }
 
     /**
+     * Флаг «Счёт запр.» (CheckBox RequestSch подформы frmMinimum).
+     *
+     * Access: RequestSch_MouseDown → UpdateNotRecFlg(Me!txtID, "ReqSch") — процедура
+     * переключает флаг и возвращает True при успехе, затем StndOnLne перезапрашивает строку.
+     * Текст UpdateNotRecFlg в выгрузке отсутствует, поэтому вызывается процедура с тем же
+     * контрактом CommonStartSP6(ID, proc, "ReqSch").
+     *
+     * @return array{ok:bool, error:?string}
+     */
+    public function toggleRequestSch(int $id): array
+    {
+        if ($id <= 0) {
+            return ['ok' => false, 'error' => 'Не указан элемент.'];
+        }
+
+        $res = LegacySp::sp6($id, 'dbo.xp_UpdNotRecFlg', 'ReqSch', 0, 50);
+
+        return $res > 0
+            ? ['ok' => true, 'error' => null]
+            : ['ok' => false, 'error' => 'Не удалось изменить флаг «Счёт запр.».'];
+    }
+
+    /**
+     * Пересчёт таргета и целевого предложения по резерву: dbo.xp_UpdTrgRec(@IDres, @numtbl).
+     *
+     * В Access результат не проверяется — только ошибки выполнения, после вызова
+     * подформа резервов перезапрашивается (TrgRecalc_Click → UpdTrgRec).
+     *
+     * @return array{ok:bool, error:?string}
+     */
+    public function updTrgRec(int $idRes, int $numtbl): array
+    {
+        if ($idRes <= 0) {
+            return ['ok' => false, 'error' => 'Не удается найти резерв'];
+        }
+
+        try {
+            $this->proc('dbo.xp_UpdTrgRec ?, ?', [$idRes, $numtbl])->execute();
+        } catch (\Throwable $e) {
+            Yii::error('xp_UpdTrgRec ' . $idRes . '/' . $numtbl . ': ' . $e->getMessage(), __METHOD__);
+            return ['ok' => false, 'error' => 'Не удалось обновить таргет: ' . $e->getMessage()];
+        }
+
+        return ['ok' => true, 'error' => null];
+    }
+
+    /**
      * Сортировка списка: в Access OrderBy у подформы (6 переключателей Ord*).
      * Сортируем на сервере, как это делал Access после смены OrderBy.
      */

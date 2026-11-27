@@ -118,6 +118,11 @@ perm: form:frmSt
   Срок не согл., ФЗ275. — `StatColumns::RESERVE_HIDDEN_IN`.
 - Колонка «В» в форме вычисляемая: `=IIf([IsExactDate]=True,"!","")` — считается в
   `StatService::reserves()`. Служебные `IDRes`, `IDProcess`, `IsExactDate`, `Colr` скрыты.
+- Условное форматирование формы (`ConditionalFormat14` у «Название темы» и «Пробл»):
+  `[DtaPost] > Date()` — пурпурный фон, `[DtaPost] = Date()` — оливковый. «В» и «Пробл»
+  при `IsGuilty = '!'` красные, «Пробл» жирный (`ForeColor = 255`, `FontWeight = 700`).
+- Кнопка «Даты резервов» (`btnDatesReservs_Click` → `frmSetDateReady2Res` с OpenArgs
+  `"r" & IDRes`) не перенесена: формы `frmSetDateReady2Res` в выгрузке `Forms/` нет.
 - Данные грузятся при выборе строки списка (`StatController::actionReserves`), как перезапрос
   подформы на `Form_Current`.
 

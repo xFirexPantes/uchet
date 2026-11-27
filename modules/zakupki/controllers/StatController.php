@@ -108,6 +108,32 @@ class StatController extends BaseController
     }
 
     /**
+     * Пересчёт таргета по резерву текущего элемента — кнопка TrgRecalc формы frmSt.
+     *
+     * Access: если резервов нет — «Не выбран резерв»; если IDRes <= 0 — «Не удается найти
+     * резерв»; иначе спрашивает номер сводной таблицы и подтверждение, затем UpdTrgRec.
+     *
+     * @legacy frmSt: TrgRecalc_Click → UpdTrgRec → dbo.xp_UpdTrgRec(IDres, numtbl)
+     */
+    public function actionTrgRecalc()
+    {
+        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+
+        if (!Yii::$app->request->isPost) {
+            throw new \yii\web\BadRequestHttpException('Нужен POST.');
+        }
+        $post   = Yii::$app->request->post();
+        $idRes  = (int)($post['idres'] ?? 0);
+        $numtbl = (int)($post['numtbl'] ?? 0);
+
+        if ($numtbl <= 0) {
+            return ['ok' => false, 'error' => 'Укажите номер сводной таблицы.'];
+        }
+
+        return (new StatService())->updTrgRec($idRes, $numtbl);
+    }
+
+    /**
      * Аналоги текущего элемента — подформа аналогов «Статистики» (subFrmStAnalog).
      *
      * Грузятся по щелчку по строке списка, как Form_Current подформы в Access.
@@ -175,6 +201,10 @@ class StatController extends BaseController
             'Sost' => $this->canProblEl()
                 ? $svc->setProblemStatus($id, (int)($post['sost'] ?? 0))
                 : ['ok' => false, 'error' => 'У вас нет прав на это действие.'],
+            // RequestSch_MouseDown: UpdateNotRecFlg(txtID, "ReqSch") — переключение флага
+            'ReqSch' => $id > 0
+                ? $svc->toggleRequestSch($id)
+                : ['ok' => false, 'error' => 'Не указан элемент.'],
             default => ['ok' => false, 'error' => 'Неизвестное действие.'],
         };
 
