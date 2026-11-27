@@ -3,6 +3,7 @@ namespace app\modules\zakupki\controllers;
 
 use app\controllers\BaseController;
 use app\modules\zakupki\models\StatFilter;
+use app\modules\zakupki\services\InvoiceColumns;
 use app\modules\zakupki\services\StatColumns;
 use app\modules\zakupki\services\StatContext;
 use app\modules\zakupki\services\StatService;
@@ -105,6 +106,30 @@ class StatController extends BaseController
             'html'  => $this->renderPartial('_reserves', [
                 'rows'  => $res['rows'],
                 'cols'  => StatColumns::reserveColumns($res['rows'], $vid),
+                'error' => $res['error'],
+            ]),
+            'count' => count($res['rows']),
+            'error' => $res['error'],
+        ];
+    }
+
+    /**
+     * Предложения поставщиков текущего элемента — подформа SubFrmInvoices (Invoices).
+     *
+     * Грузятся по щелчку по строке списка, как перезапрос подформы на Form_Current.
+     * В frmSt подформа только для просмотра, поэтому параметры всегда нулевые.
+     *
+     * @legacy frmSt: подформа Invoices → exec dbo.xp_GetInvoices1 @SkladID, @Numtbl, @IDRes, @Tpe, @DtaTxt
+     */
+    public function actionInvoices(int $id, int $numtbl = 0, int $idres = 0, int $tpe = 0, string $dta = '')
+    {
+        $res = (new StatService())->invoices($id, $numtbl, $idres, $tpe, $dta);
+
+        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+        return [
+            'html'  => $this->renderPartial('_invoices', [
+                'rows'  => $res['rows'],
+                'cols'  => InvoiceColumns::columns($res['rows']),
                 'error' => $res['error'],
             ]),
             'count' => count($res['rows']),

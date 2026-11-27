@@ -450,13 +450,19 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
         <div class="vh-list-scroll vh-an-scroll" id="stAnBox"></div>
     </section>
 
-    <?php /* Invoices — подформа SubFrmInvoices (источник xp_GetInvoices):
-             Поставщик, Дата, Срок,недель, Цена,$. */ ?>
+    <?php /* Invoices — подформа SubFrmInvoices: предложения поставщиков по элементу.
+             Источник: exec dbo.xp_GetInvoices1 @SkladID, @Numtbl, @IDRes, @Tpe, @DtaTxt
+             (@Numtbl/@IDRes/@Tpe = 0 — все предложения элемента). */ ?>
     <section class="vh-panel" id="stInvoices">
-        <div class="vh-panel-head"><span>Счета поставщиков (Invoices)</span></div>
-        <div class="vh-list-scroll">
-            <div class="vh-stub">Тут будут счета поставщиков по текущему элементу.</div>
+        <div class="vh-panel-head">
+            <span>Счета поставщиков <span class="vh-an-code" id="stInvCode"></span></span>
+            <span class="vh-tools">
+                <span id="stInvInfo">выберите строку в списке</span>
+                <button type="button" class="vh-btn vh-btn-xs" id="stInvHints"
+                        title="Что означают цвета в списке предложений">? Цвета</button>
+            </span>
         </div>
+        <div class="vh-list-scroll" id="stInvBox"></div>
     </section>
 
     </div><?php /* .vh-stack */ ?>
@@ -564,6 +570,31 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                     <div class="vh-hints-col">
                         <div class="vh-hints-t">Пробл / В</div>
                         <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t sw-red">красный «!» — из-за этого резерва элемент попал в долг</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <?php /* Легенда цветов подформы SubFrmInvoices — ConditionalFormat14 по IsCurTbl */ ?>
+    <div class="vh-modal" id="stInvHintsBox">
+        <div class="vh-modal-box" role="dialog" aria-modal="true" aria-labelledby="stInvHintsT">
+            <div class="vh-modal-head">
+                <span id="stInvHintsT">Цвета в предложениях поставщиков</span>
+                <button type="button" class="vh-modal-x" id="stInvHintsX" title="Закрыть (Esc)">✕</button>
+            </div>
+            <div class="vh-modal-body">
+                <p class="vh-hint">Список — предложения поставщиков по текущему элементу.</p>
+                <div class="vh-hints">
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Св.табл</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-green"></span><span class="vh-sw-t sw-green">строка из текущей сводной таблицы</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Галки</div>
+                        <div class="vh-hint-row"><span class="vh-sw-t">«В расчёт» — предложение участвует в расчёте</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw-t">«Активный» — согласовано к закупке</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw-t">«Проект» — цена проектная (ProjectPrice &gt; 0)</span></div>
                     </div>
                 </div>
             </div>
@@ -786,6 +817,7 @@ $this->registerJs('window.ST = ' . Json::encode([
     'rowsUrl' => Url::to(['rows']),
     'analogsUrl' => Url::to(['analogs']),        // аналоги текущего элемента (subFrmStAnalog)
     'reservesUrl' => Url::to(['reserves']),      // резервы текущего элемента (SubMinimFilter)
+    'invoicesUrl' => Url::to(['invoices']),      // предложения поставщиков (SubFrmInvoices)
     'trgRecalcUrl' => Url::to(['trg-recalc']),   // пересчёт таргета по резерву (TrgRecalc)
     'statusesUrl' => Url::to(['statuses']),      // состояния проблемы (frmfndStatus, OpenArgs 25)
     'actUrl' => Url::to(['act']),                // сохранение примечания / комментария / состояния
@@ -826,6 +858,7 @@ $this->registerJs(<<<'JS'
         [...body.rows].forEach(tr => tr.classList.toggle('sel', !!cur && tr.dataset.code === cur));
         loadAnalogs(cur);
         loadReserves(cur);
+        loadInvoices(cur);
     };
 
     /**
@@ -900,6 +933,44 @@ $this->registerJs(<<<'JS'
             const x = document.createElement('div');
             x.className = 'vh-alert';
             x.textContent = 'Не удалось получить резервы: ' + e.message;
+            box.replaceChildren(x);
+        }
+    }
+
+    /**
+     * Предложения поставщиков текущего элемента — подформа Invoices (SubFrmInvoices).
+     * В Access подформа перезапрашивалась вместе с текущей записью:
+     * exec xp_GetInvoices1 @SkladID, @Numtbl, @IDRes, @Tpe, @DtaTxt (в frmSt — только просмотр).
+     */
+    async function loadInvoices(code) {
+        const box  = document.getElementById('stInvBox');
+        const info = document.getElementById('stInvInfo');
+        const lab  = document.getElementById('stInvCode');
+        if (!box || !cfg.invoicesUrl) return;
+
+        if (!code) {
+            box.replaceChildren();
+            if (lab) lab.textContent = '';
+            if (info) info.textContent = 'выберите строку в списке';
+            return;
+        }
+
+        if (lab) lab.textContent = '№ ' + code;
+        if (info) info.textContent = 'загрузка…';
+        try {
+            const r = await fetch(cfg.invoicesUrl + '?id=' + encodeURIComponent(code),
+                { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const d = await r.json();
+            if (cur !== code) return;                    // пока грузили, выбрали другую запись
+            box.innerHTML = d.html || '';
+            if (info) info.textContent = d.error ? '' : (d.count ? 'строк: ' + d.count : 'предложений нет');
+        } catch (e) {
+            if (cur !== code) return;
+            if (info) info.textContent = '';
+            const x = document.createElement('div');
+            x.className = 'vh-alert';
+            x.textContent = 'Не удалось получить предложения: ' + e.message;
             box.replaceChildren(x);
         }
     }
@@ -1215,6 +1286,16 @@ $this->registerJs(<<<'JS'
     if (resHintsX) resHintsX.addEventListener('click', closeResHints);
     if (resHints)  resHints.addEventListener('click', e => { if (e.target === resHints) closeResHints(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeResHints(); });
+
+    // Легенда цветов подформы предложений поставщиков (SubFrmInvoices)
+    const invHints    = document.getElementById('stInvHintsBox');
+    const invHintsBtn = document.getElementById('stInvHints');
+    const invHintsX   = document.getElementById('stInvHintsX');
+    const closeInvHints = () => invHints && invHints.classList.remove('on');
+    if (invHintsBtn && invHints) invHintsBtn.addEventListener('click', () => invHints.classList.add('on'));
+    if (invHintsX) invHintsX.addEventListener('click', closeInvHints);
+    if (invHints)  invHints.addEventListener('click', e => { if (e.target === invHints) closeInvHints(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInvHints(); });
 
     const stamp = () => {
         const d = new Date();

@@ -9,6 +9,9 @@ use yii\helpers\Html;
 
 // окна сообщений вместо alert/confirm/prompt (web/js/msgbox.js) — до скриптов форм
 $this->registerJsFile('@web/js/msgbox.js', ['position' => \yii\web\View::POS_HEAD]);
+// индикатор занятости (web/js/busy.js) — карточки не подключают AppAsset
+$this->registerCssFile('@web/css/busy.css');
+$this->registerJsFile('@web/js/busy.js', ['position' => \yii\web\View::POS_HEAD]);
 $this->beginPage();
 ?>
 <!DOCTYPE html>

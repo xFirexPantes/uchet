@@ -459,6 +459,36 @@ class StatService
     }
 
     /**
+     * Предложения поставщиков по элементу — подформа SubFrmInvoices формы frmSt.
+     *
+     * Источник: exec dbo.xp_GetInvoices1 @SkladID, @Numtbl, @IDRes, @Tpe, @DtaTxt.
+     * В frmSt подформа открыта только для просмотра (blck = True), параметры
+     * @Numtbl = 0, @IDRes = 0, @Tpe = 0 — ветка «все предложения элемента».
+     * При @Numtbl < 0 процедура отдаёт TOP 10 (надпись «Показано не более 10
+     * предложений», в форме она белая и не видна).
+     *
+     * @return array{rows:array, error:?string}
+     */
+    public function invoices(int $skladId, int $numtbl = 0, int $idRes = 0, int $tpe = 0, string $dtaTxt = ''): array
+    {
+        if ($skladId <= 0) {
+            return ['rows' => [], 'error' => null];
+        }
+
+        try {
+            $rows = $this->proc(
+                'dbo.xp_GetInvoices1 ?, ?, ?, ?, ?',
+                [$skladId, $numtbl, $idRes, $tpe, $dtaTxt],
+            )->queryAll();
+        } catch (\Throwable $e) {
+            Yii::error('xp_GetInvoices1 ' . $skladId . ': ' . $e->getMessage(), __METHOD__);
+            return ['rows' => [], 'error' => 'Не удалось получить предложения поставщиков: ' . $e->getMessage()];
+        }
+
+        return ['rows' => $rows, 'error' => null];
+    }
+
+    /**
      * Примечание элемента (двойной щелчок по «Примечание»): CommonStartSP6(ID, xp_SkladUpdPrim, текст, 0, 500).
      *
      * @return array{ok:bool, error:?string} 1 — изменено, 2 — нет прав, иное — не удалось (как в Access)
