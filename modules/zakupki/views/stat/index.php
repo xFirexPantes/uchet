@@ -474,7 +474,7 @@ $this->registerCss(<<<'CSS'
 #main > .container.vh-wide { max-width:100%; width:100%; padding-left:.4rem; padding-right:.4rem; }
 
 /* Шапка: название и число строк слева, кнопки справа */
-.vh-head { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem 1rem; padding:.35rem .7rem;
+.vh-head { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem 1rem; padding:.35rem .7rem; flex:0 0 auto;
     margin:-.4rem -.7rem .4rem; background:#fff; border-bottom:3px solid var(--vh-blue); }
 .vh-head-title h1 { margin:0; color:var(--vh-ink); font-size:1rem; font-weight:600; }
 .vh-sub { font-size:.72rem; color:#5b8598; margin-top:.1rem; }
@@ -488,7 +488,9 @@ $this->registerCss(<<<'CSS'
 
 /* Фильтры: группы «подпись + поле», переносятся по ширине */
 .vh-form { display:block; }
-.vh-filters { display:flex; flex-wrap:wrap; gap:.4rem; align-items:stretch; margin-bottom:.4rem; }
+/* Форма — контейнер первой панели стека: фильтры сверху (своя высота), список забирает остаток */
+.vh-pane-main { display:flex; flex-direction:column; min-height:0; }
+.vh-filters { display:flex; flex-wrap:wrap; gap:.4rem; align-items:stretch; margin-bottom:.4rem; flex:0 0 auto; }
 .vh-fgroup { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.5rem; padding:.3rem .55rem .4rem;
     box-shadow:0 1px 3px rgba(64,179,216,.10); }
 .vh-fgroup-t { color:var(--vh-ink); font-weight:600; font-size:.68rem; text-transform:uppercase;
@@ -526,11 +528,11 @@ $this->registerCss(<<<'CSS'
 input[type=date].vh-inp { padding:0 .2rem; }
 
 /* Панели списка и подформ: стек на остаток экрана.
-   Список элементов (SubfrmStat) — 25%, остальные четыре панели — по 18.75% (поровну от остатка).
-   Пропорции заданы через flex-grow: 1 против 0.75 при одинаковом basis. */
+   Список элементов (SubfrmStat) — половина остатка, четыре панели подформ делят вторую
+   половину поровну (по 12.5%). Пропорции заданы flex-grow: 2 против 0.5. */
 .vh-stack { display:flex; flex-direction:column; gap:.4rem; flex:1 1 auto; min-height:0; }
-.vh-stack > * { flex:0.75 1 0; min-height:5.5rem; display:flex; flex-direction:column; }
-.vh-stack > .vh-pane-main { flex:1 1 0; min-height:7rem; }
+.vh-stack > * { flex:0.5 1 0; min-height:4rem; display:flex; flex-direction:column; }
+.vh-stack > .vh-pane-main { flex:2 1 0; min-height:7rem; }
 .vh-pane-main > .vh-panel { flex:1 1 auto; min-height:0; }
 
 .vh-panel { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.5rem;
