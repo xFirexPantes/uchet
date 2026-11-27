@@ -128,10 +128,15 @@ if (!$rows): ?>
                     <input type="checkbox" class="vh-chk" data-act="ReqSch" data-code="<?= Html::encode($code) ?>"
                            title="Запросить счёт"<?= (int)($r['RequestSch'] ?? 0) !== 0 ? ' checked' : '' ?>>
                 </td>
-            <?php elseif ($f === 'NotRec'): /* CheckBox формы NotRec — без подписи, как в frmMinimum */ ?>
+            <?php elseif ($f === 'NotRec'): /* CheckBox формы NotRec — подпись «Не рек», клик переключает */ ?>
                 <td data-f="NotRec" style="text-align:center">
                     <input type="checkbox" class="vh-chk" data-act="NotRec" data-code="<?= Html::encode($code) ?>"
                            title="Не рекомендуется к поставке"<?= !empty($r['NotRec']) ? ' checked' : '' ?>>
+                </td>
+            <?php elseif ($f === 'VP5' || $f === 'NoAnalog'): /* CheckBox формы без обработчика — только просмотр */ ?>
+                <td data-f="<?= Html::encode($f) ?>" style="text-align:center">
+                    <input type="checkbox" class="vh-chk" disabled
+                           title="<?= $f === 'VP5' ? 'ВП5' : 'Нет аналога' ?>"<?= !empty($r[$f]) ? ' checked' : '' ?>>
                 </td>
             <?php else: ?>
             <td data-f="<?= Html::encode($f) ?>"<?= $style ? ' style="' . implode(';', $style) . '"' : '' ?>

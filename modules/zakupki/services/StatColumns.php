@@ -70,8 +70,10 @@ class StatColumns
         'Недополучено'   => ['Недопол.', 80, true],
         'ПримечаниеДолг' => ['Примечание', 260, false],
         'LowR'           => ['Дешевле,руб', 100, true],
-        'SostProblEl'    => ['Не рек', 70, false],
-        'NotRec'         => ['', 24, false],
+        'SostProblEl'    => ['Ком.произв.', 90, false],
+        // «Не рек» — это CheckBox NotRec (подпись отдельным Label в Access, Left 22109);
+        // SostProblEl в списке не выводится, кроме вида b, см. SHOWN_ONLY_IN
+        'NotRec'         => ['Не рек', 64, false],
         'VP5'            => ['ВП5', 50, false],
         'NoAnalog'       => ['Без аналог.', 80, false],
         'DfltIsp'        => ['Информация', 100, false],
@@ -152,6 +154,18 @@ class StatColumns
         'KolPok'     => ['1'],
         'DfltIsp'    => ['b'],
         'RequestSch' => ['1', '2', '3'],
+    ];
+
+    /**
+     * Колонки, которые видны только в перечисленных видах и скрыты во всех остальных.
+     *
+     * SostProblEl: в макете подпись «Не рек» стоит над этим полем, но в списке «Не рек» —
+     * это CheckBox NotRec. SostProblEl показывается только в виде b, где fnRepaintFormStat
+     * делает его видимым под подписью «Ком.произв.» (комментарий производства).
+     * Отличие от SHOWN_IN: здесь скрыто и при неизвестном/пустом виде.
+     */
+    public const SHOWN_ONLY_IN = [
+        'SostProblEl' => ['b'],
     ];
 
     /** Подписи колонок, которые fnRepaintFormStat меняет при смене вида (дословно из VBA). */
@@ -327,6 +341,8 @@ class StatColumns
         foreach (array_keys($ordered) as $f) {
             // Скрыто целиком в этом виде (вид 5 — МинКоличество и txtSV)
             if (in_array($f, self::HIDDEN_IN[$vid] ?? [], true)) continue;
+            // Видно только в перечисленных видах (SostProblEl — только b, «Ком.произв.»)
+            if (isset(self::SHOWN_ONLY_IN[$f]) && !in_array($vid, self::SHOWN_ONLY_IN[$f], true)) continue;
             // Показывается только в перечисленных видах (FZ275Kol, OrderKat, KolPok, DfltIsp, RequestSch)
             if (isset(self::SHOWN_IN[$f]) && $vid !== '' && !in_array($vid, self::SHOWN_IN[$f], true)) continue;
 

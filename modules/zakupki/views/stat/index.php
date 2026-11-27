@@ -538,7 +538,8 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                     <div class="vh-hints-col">
                         <div class="vh-hints-t">Флажки</div>
                         <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t">☑ «Счёт запр.» — запросить счёт</span></div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t">☑ без подписи — не рекомендуется к поставке (клик переключает)</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t">☑ «Не рек» — не рекомендуется к поставке (клик переключает)</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t">☑ «ВП5», «Без аналог.» — отметки, только просмотр</span></div>
                     </div>
                 </div>
             </div>
