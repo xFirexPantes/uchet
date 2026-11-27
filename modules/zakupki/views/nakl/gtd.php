@@ -37,7 +37,7 @@ $box = 'position:absolute;overflow:auto;background:#fff;border:1px solid #7f9db9
     <div class="lbl" style="left:4px;top:319px">Позиции в файле</div>
     <?php /* Легенда цветов подформы lstNakl (subfrmLoadKompel): ConditionalFormat14 */ ?>
     <button type="button" class="a-btn" data-cl-open="gtdColors"
-            title="Что означают цвета в списке позиций файла"
+            title="Что означают цвета в списках позиций"
             style="left:150px;top:306px;width:80px;height:22px">? Цвета</button>
     <button type="button" class="a-btn" id="AssignElKompel" style="left:1138px;top:306px;width:105px;height:22px">Сопоставить</button>
     <button type="button" class="a-btn" id="DelAssign" title="Удалить сопоставление" style="left:1247px;top:306px;width:38px;height:22px">−</button>
@@ -51,18 +51,24 @@ $box = 'position:absolute;overflow:auto;background:#fff;border:1px solid #7f9db9
     <input type="file" id="xlFile" accept=".xls,.xlsx,.xlsm" style="display:none">
     <?= $this->render('@app/views/access/_color-legend', [
         'id'    => 'gtdColors',
-        'title' => 'Цвета в позициях файла',
-        'note'  => 'Цвет фона в столбце подсказывает, сопоставлена ли строка файла с позицией счёта.',
+        'title' => 'Цвета в загрузке ГТД',
+        'note'  => 'Цвет фона в столбце подсказывает состояние позиции счёта или строки файла.',
         'btn'   => '',
         'blocks' => [
-            ['t' => 'Маркировка', 'rows' => [
+            ['t' => 'Позиции счёта: Наименование', 'rows' => [
+                ['sw' => '#a7da4e', 'label' => 'по позиции уже есть накладная ([ExistNakl]=1)'],
+            ]],
+            ['t' => 'Позиции счёта: ID Пост.', 'rows' => [
+                ['sw' => '#fce6d4', 'label' => 'пустой ID подсвечен цветом счёта (PaintIDPost)'],
+            ]],
+            ['t' => 'Позиции в файле: Маркировка', 'rows' => [
                 ['sw' => '#ffff00', 'label' => 'перегрузка строки ([OverLoad]=1)'],
                 ['sw' => '#ccffcc', 'label' => 'сопоставлена с позицией счёта ([IDSchEl]>0)'],
             ]],
-            ['t' => 'Применение', 'rows' => [
+            ['t' => 'Позиции в файле: Применение', 'rows' => [
                 ['sw' => '#ccffcc', 'label' => 'сопоставлена с позицией счёта ([IDSchEl]>0)'],
             ]],
-            ['t' => 'В накл', 'rows' => [
+            ['t' => 'Позиции в файле: В накл', 'rows' => [
                 ['sw' => '#ff0000', 'label' => 'красный — строка не сопоставлена (после «Выгрузить в накладную»)'],
             ]],
         ],

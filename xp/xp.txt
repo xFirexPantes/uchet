@@ -4467,3 +4467,438 @@ end
 END
 
 
+
+Public Function ExactDate(SkladID As Long) As Boolean
+On Error GoTo er
+ExactDate = CommonStartSP1(SkladID, "dbo.xp_IsExactDate", 0) > 0
+ex:
+Exit Function
+er:
+ExactDate = False
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+End Function
+Public Function DatePost(SkladID As Long) As Boolean
+On Error GoTo er
+Dim cnn As ADODB.Connection
+Dim cmd As ADODB.Command
+Dim Prm As ADODB.Parameter
+Set cnn = CurrentProject.Connection
+Set cmd = New ADODB.Command
+cmd.ActiveConnection = cnn
+cmd.CommandText = "dbo.xp_GetDatePost"
+cmd.CommandType = adCmdStoredProc
+Set Prm = cmd.CreateParameter("SkladID", adInteger, adParamInput, , SkladID)
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("Dta", adDate, adParamOutput)
+cmd.Parameters.Append Prm
+cmd.Execute
+If IsNull(cmd.Parameters("Dta")) = True Then
+    DatePost = False
+Else
+    DatePost = cmd.Parameters("Dta") <= Date
+End If
+cnn.Close
+ex:
+Set Prm = Nothing
+Set cmd = Nothing
+Set cnn = Nothing
+Exit Function
+er:
+DatePost = False
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+End Function
+
+
+
+Option Compare Database
+Option Explicit
+Public Function ExactDate(SkladID As Long) As Boolean
+On Error GoTo er
+ExactDate = CommonStartSP1(SkladID, "dbo.xp_IsExactDate", 0) > 0
+ex:
+Exit Function
+er:
+ExactDate = False
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+End Function
+Public Function DatePost(SkladID As Long) As Boolean
+On Error GoTo er
+Dim cnn As ADODB.Connection
+Dim cmd As ADODB.Command
+Dim Prm As ADODB.Parameter
+Set cnn = CurrentProject.Connection
+Set cmd = New ADODB.Command
+cmd.ActiveConnection = cnn
+cmd.CommandText = "dbo.xp_GetDatePost"
+cmd.CommandType = adCmdStoredProc
+Set Prm = cmd.CreateParameter("SkladID", adInteger, adParamInput, , SkladID)
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("Dta", adDate, adParamOutput)
+cmd.Parameters.Append Prm
+cmd.Execute
+If IsNull(cmd.Parameters("Dta")) = True Then
+    DatePost = False
+Else
+    DatePost = cmd.Parameters("Dta") <= Date
+End If
+cnn.Close
+ex:
+Set Prm = Nothing
+Set cmd = Nothing
+Set cnn = Nothing
+Exit Function
+er:
+DatePost = False
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+End Function
+
+
+Public Sub TestPrice(SkladID As Long, Stoim As Double, PrcInvoice As Currency, ByRef obj As Object)
+On Error GoTo er
+Dim cnn As ADODB.Connection
+Dim cmd As ADODB.Command
+Dim Prm As ADODB.Parameter
+Dim Txt As String
+Dim WOQuest As Boolean
+Dim PrcOpt As Currency
+Set cnn = CurrentProject.Connection
+Set cmd = New ADODB.Command
+If obj.Name = "frmPosInput" Then
+    WOQuest = obj!WOQuest
+    obj!Warn = vbNullString
+Else
+    WOQuest = False
+End If
+cmd.ActiveConnection = cnn
+cmd.CommandText = "dbo.xp_GetPriceEl"
+cmd.CommandType = adCmdStoredProc
+Set Prm = cmd.CreateParameter("SkladID", adInteger, adParamInput, , SkladID)
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("prc", adDouble, adParamOutput)
+cmd.Parameters.Append Prm
+cmd.Execute
+PrcOpt = cmd.Parameters("prc")
+cnn.Close
+Txt = vbNullString
+If PrcOpt * 1.05 < Stoim Then
+    Txt = "Ðàçíèöà ÏÐÅÂÛØÀÅÒ 5% è ñîñòàâëÿåò " & dhRound(Stoim - PrcOpt, 4) & vbCrLf
+Else
+    Txt = "Ðàçíèöà ìåíåå 5% è ñîñòàâëÿåò " & dhRound(Stoim - PrcOpt, 4) & vbCrLf
+End If
+'Ïî ÒÇ 525 Ìàñëþêîâà (25.04.23)
+If PrcInvoice > 0 And Stoim > PrcInvoice * 1.05 Then
+    Txt = Txt + " Öåíà ýëåìåíòà - " & Stoim & " ïðåâûøàåò öåíó â invoice " & PrcInvoice & " áîëåå ÷åì íà 5%" + vbCrLf
+End If
+'
+If PrcOpt < Stoim Then
+    Txt = "Ñðåäíÿÿ öåíà ýëåìåíòà - " & PrcOpt & vbCrLf & "Âû ââîäèòå öåíó - " & Stoim & vbCrLf & Left$(Txt, Len(Txt) - 2)
+End If
+If Txt <> vbNullString Then
+    If WOQuest = True Then
+        obj!Warn = Txt
+    Else
+        MyMsgBox Txt
+    End If
+End If
+
+ex:
+Set Prm = Nothing
+Set cmd = Nothing
+Set cnn = Nothing
+Exit Sub
+er:
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+End Sub
+Public Sub GetOstAfterReserv()
+On Error GoTo er
+Dim cmd As ADODB.Command
+Dim Prm As ADODB.Parameter
+Dim cnn As ADODB.Connection
+Dim rst As ADODB.Recordset
+Dim objExcel As Object
+Dim fld As ADODB.Field
+Dim i As Long
+Dim Bnd As Double
+Bnd = GetFromBox("Ââåäèòå íèæíþþ ãðàíèöó")
+If Bnd >= 0 Then
+    Set cnn = CurrentProject.Connection
+    Set cmd = New ADODB.Command
+    cmd.ActiveConnection = cnn
+    cmd.CommandText = "dbo.xp_GetOstAfterReserv"
+    cmd.CommandType = adCmdStoredProc
+    Set Prm = cmd.CreateParameter("Bnd", adDouble, adParamInput, , Bnd)
+    cmd.Parameters.Append Prm
+    Set rst = cmd.Execute()
+    If rst.RecordCount > 0 Then
+        i = 1
+        Set objExcel = CreateObject("Excel.Application" + Forms!frmUchet!ver)
+        objExcel.Workbooks.Add
+        objExcel.Visible = True
+        With objExcel.ActiveWorkbook.worksheets("Ëèñò1")
+            .Range("A2").copyfromrecordset rst
+            For Each fld In rst.Fields
+                .Cells(i).Cells(1) = fld.Name
+                .Columns(Chr(64 + i) + ":" + Chr(64 + i)).EntireColumn.AutoFit
+                i = i + 1
+            Next fld
+        End With
+    End If
+    rst.Close
+    cnn.Close
+End If
+ex:
+Set Prm = Nothing
+Set cmd = Nothing
+Set rst = Nothing
+Set cnn = Nothing
+Set fld = Nothing
+Exit Sub
+er:
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+End Sub
+
+Public Function AddVacFn(IspID As Long, TypeVac As Long, BDta As Date, EDta As Date) As Long
+On Error GoTo er
+Dim cnn As ADODB.Connection
+Dim cmd As ADODB.Command
+Dim Prm As ADODB.Parameter
+Dim Res As Long
+AddVacFn = 0
+Set cnn = CurrentProject.Connection
+Set cmd = New ADODB.Command
+cmd.CommandText = "dbo.xp_AddVac"
+cmd.CommandType = adCmdStoredProc
+cmd.CommandTimeout = 30
+Set Prm = cmd.CreateParameter("IspID", adInteger, adParamInput, , IspID)
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("TypeVac", adInteger, adParamInput, , TypeVac)
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("BDta", adDate, adParamInput, , BDta)
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("EDta", adDate, adParamInput, , EDta)
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("res", adInteger, adParamOutput)
+cmd.Parameters.Append Prm
+cmd.ActiveConnection = cnn
+cmd.Execute
+Res = Nz(cmd.Parameters("res"), 0)
+cnn.Close
+Select Case Res
+    Case 0, -3
+        MsgBox "Íå óäàëîñü äîáàâèòü çàïèñü", vbExclamation
+    Case Is > 0
+        AddVacFn = Res
+    Case -2
+        MsgBox "Íå íàéäåí êîä ïðèâÿçêè", vbExclamation
+    Case -4
+        MsgBox "Èíòåðâàë ïåðåñåêàåòñÿ ñ óæå ñóùåñòâóþùèì", vbInformation
+End Select
+ex:
+Set Prm = Nothing
+Set cmd = Nothing
+Set cnn = Nothing
+Exit Function
+er:
+AddVacFn = 0
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+End Function
+
+Public Sub SaveReport()
+On Error GoTo er
+Dim RUser As String
+Dim cmd As ADODB.Command
+Dim Prm As ADODB.Parameter
+Dim cnn As ADODB.Connection
+Set cnn = CurrentProject.Connection
+Set cmd = New ADODB.Command
+cmd.CommandText = "dbo.xp_isStatReportExist"
+cmd.CommandType = adCmdStoredProc
+cmd.CommandTimeout = 30
+Set Prm = cmd.CreateParameter("Period", adVarWChar, adParamInput, 16, OldLine)
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("res", adVarWChar, adParamOutput, 20)
+cmd.Parameters.Append Prm
+cmd.ActiveConnection = cnn
+cmd.Execute
+RUser = cmd.Parameters("res")
+If RUser <> vbNullString Then
+    If MsgBox("Íà òåêóùóþ äàòó óæå áûë ñôîðìèðîâàí äàííûé îò÷åò ïîëüçîâàòåëåì '" + RUser + "'. Âû óâåðåíû ÷òî íåîáõîäèìî åãî ïåðåçàïèñàòü?", vbYesNo) = vbYes Then
+        cnn.Execute ("exec dbo.xp_DownloadReport '02','" + Left(OldLine, 8) + "','" + Right$(OldLine, 8) + "',0,0,'%',2,2," + OldLine)
+        MsgBox "Äàííûå çà ïåðèîä ñ " + Mid$(OldLine, 7, 2) + "." + Mid$(OldLine, 5, 2) + "." + Mid$(OldLine, 1, 4) + " ïî " + Mid$(OldLine, 15, 2) + "." + Mid$(OldLine, 13, 2) + "." + Mid$(OldLine, 9, 4) + " ñîõðàíåíû"
+    End If
+Else
+    cnn.Execute ("exec dbo.xp_DownloadReport '02','" + Left$(OldLine, 8) + "','" + Right$(OldLine, 8) + "',0,0,'%',2,1," + OldLine)
+    MsgBox "Äàííûå çà ïåðèîä ñ " + Mid$(OldLine, 7, 2) + "." + Mid$(OldLine, 5, 2) + "." + Mid$(OldLine, 1, 4) + " ïî " & Mid$(OldLine, 15, 2) + "." + Mid$(OldLine, 13, 2) + "." + Mid$(OldLine, 9, 4) + " ñîõðàíåíû"
+End If
+cnn.Close
+ex:
+Set Prm = Nothing
+Set cmd = Nothing
+Set cnn = Nothing
+Exit Sub
+er:
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+End Sub
+
+Public Sub UploadReport()
+On Error GoTo er
+Dim RUser As String
+Dim RS As Recordset
+Dim XLAPP As Object
+Dim XLBook As Object
+Dim XLSheet As Object
+Dim DdATE As String
+Set XLAPP = CreateObject("Excel.Application")
+Set XLBook = XLAPP.Workbooks.Add
+Dim i As Integer
+i = 2
+Set RS = CurrentProject.Connection.Execute("exec dbo.xp_UploadOrderStatsToXL '" & OldLine & "','" & KodNullEl & "','02','" & Left(OldLine, 8) & "','" & Right(OldLine, 8) & "',0,0,'%',2,1")
+If RS.RecordCount > 0 Then
+    Set XLSheet = XLBook.worksheets(1)
+    DdATE = MonthName(Month(CDate(Mid(OldLine, 7, 2) & "." & Mid(OldLine, 5, 2) & "." & Mid(OldLine, 1, 4)))) & " " & Mid(OldLine, 1, 4)
+    XLSheet.Name = DdATE & " îò " & KodNullEl
+    XLSheet.Range("A1").Value = "ProcessID"
+    XLSheet.Range("B1").Value = "ProcessName"
+    XLSheet.Range("C1").Value = "Name"
+    XLSheet.Range("D1").Value = "Firma"
+    XLSheet.Range("E1").Value = "Ìåíåäæåð"
+    XLSheet.Range("F1").Value = "Ñîõð. íîìåð ñ÷åòà"
+    XLSheet.Range("G1").Value = "Òåê. íîìåð ñ÷åòà"
+    XLSheet.Range("H1").Value = "Ñîõðàíåííàÿ ñóììà ñ÷åòà"
+    XLSheet.Range("I1").Value = "Òåêóùàÿ ñóììà ñ÷åòà"
+    XLSheet.Range("J1").Value = "Ñîõðàíåííûé òèï"
+    XLSheet.Range("K1").Value = "Òåêóùèé òèï"
+    XLSheet.Range("A2").copyfromrecordset RS
+    XLSheet.Columns("A:K").EntireColumn.AutoFit
+    XLSheet.Columns("H:I").NumberFormat = "#,##0.00$"
+    While XLSheet.Cells(i, 1).Value > 0
+    If Not (XLSheet.Cells(i, 7).Value - XLSheet.Cells(i, 6).Value) = 0 Then
+           XLSheet.Cells(i, 7).Interior.Color = 255
+           XLSheet.Cells(i, 6).Interior.Color = 255
+        End If
+        If Not XLSheet.Cells(i, 8).Value = XLSheet.Cells(i, 9).Value Then
+           XLSheet.Cells(i, 8).Interior.Color = 255
+           XLSheet.Cells(i, 9).Interior.Color = 255
+        End If
+               If Not XLSheet.Cells(i, 10).Value = XLSheet.Cells(i, 11).Value Then
+           XLSheet.Cells(i, 10).Interior.Color = 255
+           XLSheet.Cells(i, 11).Interior.Color = 255
+        End If
+        i = i + 1
+    Wend
+    XLAPP.Visible = True
+End If
+KodNullEl = Null
+ex:
+Exit Sub
+XLBook.Close
+RS.Close
+Set XLAPP = Nothing
+Set XLBook = Nothing
+Set XLSheet = Nothing
+Set RS = Nothing
+er:
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+
+
+End Sub
+
+Public Sub SetRS4PosZakasGlobal(ScetID As Long, ProcessID As Long, ByRef obj As Object, Optional IsShowMoney As Long = 1)
+On Error GoTo er
+obj!Pos.Form.RecordSource = "Exec dbo.xp_frmAllScet_lstPos " & ScetID & "," & IsShowMoney
+If obj!Pos.Form.Recordset.RecordCount > 0 Then
+    obj!Pos!Íàäïèñü11.Caption = "Òèï ðàáîòû â 1Ñ"
+    If obj!Pos.Form.Recordset!IsSpecif = 0 Then
+        obj!Pos_N.Caption = "Ïîçèöèè ñ÷¸òà"
+    Else
+        obj!Pos_N.Caption = "Ïîçèöèè ñïåöèôèêàöèè"
+    End If
+Else
+    obj!Pos_N.Caption = "Ïîçèöèè"
+    obj!Pos!Íàäïèñü11.Caption = "Âèä ðàáîò"
+    obj!Pos.Form.RecordSource = "exec dbo.xp_StatZakasGetPos " & ProcessID & "," & IsShowMoney
+End If
+ex:
+Exit Sub
+er:
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+End Sub
+Public Function MakeRS4StatZak(BDta As Date, EDta As Date, Isp As String, LBnd As Currency, VP As Long) As Long
+On Error GoTo er
+Dim cnn As ADODB.Connection
+Dim cmd As ADODB.Command
+Dim Prm As ADODB.Parameter
+Set cnn = CurrentProject.Connection
+Set cmd = New ADODB.Command
+cmd.CommandText = "dbo.xp_MakeGraf4StatZak"
+cmd.CommandType = adCmdStoredProc
+Set Prm = cmd.CreateParameter("BDtaTxt", adVarChar, adParamInput, 8, Format$(BDta, "yyyymmdd"))
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("EDtaTxt", adVarChar, adParamInput, 8, Format$(EDta, "yyyymmdd"))
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("Isp", adVarChar, adParamInput, 100, Isp)
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("LBnd", adCurrency, adParamInput, , LBnd)
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("VP", adInteger, adParamInput, , VP)
+cmd.Parameters.Append Prm
+Set Prm = cmd.CreateParameter("res", adInteger, adParamOutput)
+cmd.Parameters.Append Prm
+cmd.ActiveConnection = cnn
+cmd.Execute
+MakeRS4StatZak = cmd.Parameters("res")
+cnn.Close
+ex:
+Set Prm = Nothing
+Set cmd = Nothing
+Set cnn = Nothing
+Exit Function
+er:
+MakeRS4StatZak = 0
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+End Function
+Public Sub dscsdc()
+DoCmd.Close acForm, "frmPosReserv", acSaveYes
+End Sub
+
+Private Sub NotRec_MouseDown(Button As Integer, Shift As Integer, x As Single, y As Single)
+On Error GoTo er
+If UpdateNotRecFlg(Me!txtID) = True Then
+    Call StndOnLne(Me, Me!txtID, True, False, "Код = ")
+End If
+ex:
+Exit Sub
+er:
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+
+End Sub
+
+Public Function UpdateNotRecFlg(SkladID As Long, Optional Rgm As String = "NotRec") As Boolean
+On Error GoTo er
+UpdateNotRecFlg = False
+Select Case CommonStartSP6(SkladID, "dbo.xp_UpdateNotRecFlgNew", Rgm, , , 50)
+Case 0
+    MsgBox "У Вас нет прав на изменение этого флажка", vbInformation
+Case 1
+    UpdateNotRecFlg = True
+Case 2
+    MsgBox "Не удалось изменить состояние флажка", vbInformation
+End Select
+ex:
+Exit Function
+er:
+MsgBox Err.Number & vbCrLf & Err.Description
+Resume ex
+End Function

@@ -28,6 +28,7 @@
  * @var string|null $note
  * @var array $footer  граница цены, разница, курс (StatService::footer)
  * @var array $hints   подсказки по колонкам: поле => текст (StatService::hints)
+ * @var array $flags   ExactDate/DatePost по коду строки (StatService::dateFlags)
  */
 
 use app\modules\zakupki\services\StatContext;
@@ -356,6 +357,7 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                         'bnd'   => $footer['bnd'],
                         'vid'   => (string)$filter->vid,
                         'paint' => StatContext::needPaintDolg(),
+                        'flags' => $flags,
                         'empty' => $error ? 'Список не загружен' : 'Нет записей, удовлетворяющих условию',
                     ]) ?>
                     </tbody>
@@ -473,8 +475,13 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                 <div class="vh-hints">
                     <div class="vh-hints-col">
                         <div class="vh-hints-t">Наименование</div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t vh-b">жёсткий срок поставки</span></div>
-                        <div class="vh-hint-row"><span class="vh-sw sw-green"></span><span class="vh-sw-t sw-green">срок поставки меньше текущей даты</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t vh-b">жёсткий срок поставки (ExactDate)</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t sw-green">срок поставки уже наступил (DatePost)</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Номинал</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plum"></span><span class="vh-sw-t">состояние проблемы 5</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t sw-magenta-t">не рекомендуется к поставке ([NotRec])</span></div>
                     </div>
                     <div class="vh-hints-col">
                         <div class="vh-hints-t">Примечание</div>
@@ -527,6 +534,11 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
                     <div class="vh-hints-col">
                         <div class="vh-hints-t">Строка</div>
                         <div class="vh-hint-row"><span class="vh-sw sw-mint"></span><span class="vh-sw-t sw-green">счёт запрошен</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Флажки</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t">☑ «Счёт запр.» — запросить счёт</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t">☑ без подписи — не рекомендуется к поставке (клик переключает)</span></div>
                     </div>
                 </div>
             </div>
@@ -721,6 +733,7 @@ input[type=date].vh-inp { padding:0 .2rem; }
 .vh-sw.sw-mint { background:#b1ffb1; }
 .vh-sw.sw-magenta { background:rgba(255,0,255,.35); }
 .vh-sw.sw-olive { background:rgba(128,128,0,.45); }
+.vh-sw.sw-plum { background:#993366; }     .vh-sw-t.sw-magenta-t { color:#c000c0; }
 .vh-sw.sw-plain { background:#fff; }
 .empty { color:#7d9aa7; font-style:italic; padding:.5rem .6rem; }
 
@@ -939,34 +952,35 @@ $this->registerJs(<<<'JS'
     });
 
     /**
-     * RequestSch_MouseDown: галка «Счёт запр.» в списке. Access переключает флаг процедурой
-     * UpdateNotRecFlg(txtID, "ReqSch") и перезапрашивает строку (StndOnLne).
+     * RequestSch_MouseDown / NotRec_MouseDown: галки «Счёт запр.» и «не рекомендуется».
+     * Access переключает флаг процедурой UpdateNotRecFlg(txtID, "ReqSch"|"NotRec")
+     * и перезапрашивает строку (StndOnLne).
      */
     tbl.addEventListener('change', async e => {
         const chk = e.target.closest('input.vh-chk');
         if (!chk || !cfg.actUrl) return;
         const code = chk.dataset.code;
+        const act  = chk.dataset.act || 'ReqSch';
         chk.disabled = true;
         try {
             const r = await fetch(cfg.actUrl, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest',
                            'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ id: code, act: 'ReqSch' }).toString(),
+                body: new URLSearchParams({ id: code, act }).toString(),
             });
             if (!r.ok) throw new Error('HTTP ' + r.status);
             const d = await r.json();
             if (!d.ok) {
                 chk.checked = !chk.checked;             // вернуть прежнее состояние
-                alert(d.error || 'Не удалось изменить флаг «Счёт запр.»');
+                alert(d.error || 'Не удалось изменить флажок');
                 return;
             }
-            // StndOnLne: перезапрос списка с возвратом к текущей записи
-            const tr = chk.closest('tr');
-            if (tr) tr.style.background = chk.checked ? '#b1ffb1' : '';
+            // StndOnLne: перезапрос списка с возвратом к текущей записи — флажок и цвета придут с сервера
+            refresh();
         } catch (err) {
             chk.checked = !chk.checked;
-            alert('Не удалось изменить флаг: ' + err.message);
+            alert('Не удалось изменить флажок: ' + err.message);
         } finally {
             chk.disabled = false;
         }

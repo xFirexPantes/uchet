@@ -52,6 +52,8 @@ class StatController extends BaseController
             'error'  => $res['error'],
             'note'   => $res['note'],
             'footer' => $res['footer'],
+            // Признаки ExactDate/DatePost по коду — раскраска «Наименование» (frmMinimum)
+            'flags'  => $res['flags'],
             // Подсказки по колонкам: Descr.Caption на GotFocus подформы frmMinimum
             'hints'  => StatService::hints((string)$res['filter']->vid, StatContext::needPaintDolg()),
         ]);
@@ -78,6 +80,7 @@ class StatController extends BaseController
                 'bnd'   => $res['footer']['bnd'],
                 'vid'   => (string)$res['filter']->vid,
                 'paint' => StatContext::needPaintDolg(),
+                'flags' => $res['flags'],
                 'empty' => $res['error'] ? 'Список не загружен' : 'Нет записей, удовлетворяющих условию',
             ]),
             'count' => count($res['rows']),
@@ -207,6 +210,10 @@ class StatController extends BaseController
             'ReqSch' => $id > 0
                 ? $svc->toggleRequestSch($id)
                 : ['ok' => false, 'error' => 'Не указан элемент.'],
+            // NotRec_MouseDown: UpdateNotRecFlg(txtID) — Rgm по умолчанию "NotRec"
+            'NotRec' => $id > 0
+                ? $svc->toggleNotRec($id)
+                : ['ok' => false, 'error' => 'Не указан элемент.'],
             default => ['ok' => false, 'error' => 'Неизвестное действие.'],
         };
 
@@ -259,6 +266,9 @@ class StatController extends BaseController
             $error = implode(' ', $filter->getFirstErrors());
         }
 
-        return compact('filter', 'footer', 'vids', 'firms', 'managers', 'statuses', 'fz275', 'rows', 'error', 'note');
+        // Раскраска «Наименование»: ExactDate/DatePost считаются по коду строки (VBA frmMinimum)
+        $flags = $rows ? $svc->dateFlags(array_column($rows, 'Код')) : [];
+
+        return compact('filter', 'footer', 'vids', 'firms', 'managers', 'statuses', 'fz275', 'rows', 'error', 'note', 'flags');
     }
 }

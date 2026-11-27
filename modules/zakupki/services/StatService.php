@@ -533,6 +533,82 @@ class StatService
     }
 
     /**
+     * Флажок NotRec подформы frmMinimum (CheckBox без подписи, «не рекомендуется к поставке»).
+     *
+     * VBA: NotRec_MouseDown → UpdateNotRecFlg(Me!txtID) → Rgm по умолчанию "NotRec" →
+     * CommonStartSP6(SkladID, "dbo.xp_UpdateNotRecFlgNew", Rgm, , , 50).
+     * Коды результата те же, что у «Счёт запр.»: 0 — нет прав, 1 — изменено, 2 — не удалось.
+     *
+     * @return array{ok:bool, error:?string}
+     */
+    public function toggleNotRec(int $id): array
+    {
+        if ($id <= 0) {
+            return ['ok' => false, 'error' => 'Не указан элемент.'];
+        }
+
+        $res = LegacySp::sp6($id, 'dbo.xp_UpdateNotRecFlgNew', 'NotRec', 0, 50);
+
+        return match ($res) {
+            1       => ['ok' => true, 'error' => null],
+            0       => ['ok' => false, 'error' => 'У вас нет прав на изменение этого флажка'],
+            default => ['ok' => false, 'error' => 'Не удалось изменить состояние флажка'],
+        };
+    }
+
+    /**
+     * Признаки строк для раскраски «Наименование» — ConditionalFormat14 подформы frmMinimum.
+     *
+     * VBA:
+     *   ExactDate([txtID]) → CommonStartSP1(txtID, "dbo.xp_IsExactDate", 0) > 0;
+     *   DatePost([txtID])  → xp_GetDatePost(txtID, @Dta OUTPUT), затем Dta <= Date().
+     * Оба вызываются на каждую строку, а строк в списке бывает несколько сотен,
+     * поэтому все вызовы идут одним батчем: отдельный запрос на строку слишком дорог.
+     * Ошибка любой процедуры — признаков нет, как On Error в VBA (функция даёт False).
+     *
+     * @param array $ids коды строк списка
+     * @return array<int, array{ex:bool, dp:bool}> по коду: ex — ExactDate, dp — DatePost
+     */
+    public function dateFlags(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn($v) => $v > 0)));
+        if (!$ids) {
+            return [];
+        }
+
+        $sql = "SET NOCOUNT ON;\nDECLARE @t TABLE (id int PRIMARY KEY, ex int NULL, dp datetime NULL);\n"
+            . "DECLARE @r int, @d datetime;\n";
+        foreach ($ids as $id) {
+            $sql .= "SET @r = NULL; SET @d = NULL;"
+                . " EXEC dbo.xp_IsExactDate $id, @r OUTPUT;"
+                . " EXEC dbo.xp_GetDatePost $id, @d OUTPUT;"
+                . " INSERT INTO @t (id, ex, dp) VALUES ($id, @r, @d);\n";
+        }
+        $sql .= 'SELECT id, ex, dp FROM @t';
+
+        try {
+            $rows = Yii::$app->db->createCommand($sql)->queryAll();
+        } catch (\yii\db\Exception $e) {
+            Yii::error('dateFlags: ' . $e->getMessage(), __METHOD__);
+            return [];
+        }
+
+        $today = date('Y-m-d');
+        $out = [];
+        foreach ($rows as $r) {
+            if (!isset($r['id'])) {
+                continue;                       // процедура вернула свой набор — признаков нет
+            }
+            $dp = $r['dp'] === null ? null : substr((string)$r['dp'], 0, 10);
+            $out[(int)$r['id']] = [
+                'ex' => (int)$r['ex'] > 0,
+                'dp' => $dp !== null && $dp <= $today,
+            ];
+        }
+        return $out;
+    }
+
+    /**
      * Пересчёт таргета и целевого предложения по резерву: dbo.xp_UpdTrgRec(@IDres, @numtbl).
      *
      * В Access результат не проверяется — только ошибки выполнения, после вызова

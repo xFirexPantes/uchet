@@ -176,7 +176,24 @@ JS, View::POS_HEAD);
 
     <?php if ($lst): // Rgm 2: позиции счёта (SubFrmMassInputSch) — те же столбцы, что в карточке ?>
         <div class="vh-nk-lsch">
-            <div class="vh-nk-cap">Позиции счёта</div>
+            <div class="vh-nk-cap" style="display:flex;align-items:center;gap:.4rem">
+                <span>Позиции счёта</span>
+                <?php /* Легенда цветов — те же столбцы, что в карточке счёта (_pos-cols.php) */ ?>
+                <?= $this->render('@app/views/access/_color-legend', [
+                    'id'    => 'naklPosColors',
+                    'title' => 'Цвета в позициях счёта',
+                    'note'  => 'Цвет фона в столбце подсказывает состояние позиции счёта.',
+                    'btn'   => 'vh-dlg-btn',
+                    'blocks' => [
+                        ['t' => 'Наименование', 'rows' => [
+                            ['sw' => '#a7da4e', 'label' => 'по позиции уже есть накладная ([ExistNakl]=1)'],
+                        ]],
+                        ['t' => 'ID Пост.', 'rows' => [
+                            ['sw' => '#fce6d4', 'label' => 'пустой ID подсвечен цветом счёта (PaintIDPost)'],
+                        ]],
+                    ],
+                ]) ?>
+            </div>
             <div class="vh-nk-grid">
                 <?php ['cols' => $schCols, 'key' => $schKey] = (function () use ($d) { $rec = $d['cardRec']; $all = false; return require __DIR__ . '/../schet/_pos-cols.php'; })(); ?>
                 <?= $this->render('@app/views/access/_grid', ['tid' => 'lsch', 'key' => 'nakl.' . $schKey, 'cols' => $schCols, 'rows' => $d['lstSch']]) ?>

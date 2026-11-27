@@ -17,6 +17,7 @@
  * @var string $empty  текст для пустого списка
  * @var string $vid    вид списка: часть правил есть только в виде 1 или только в виде b
  * @var bool   $paint  FlgPaintDolg (признак менеджера): включает раскраску долгов MakeColorDolgStat
+ * @var array  $flags  ExactDate/DatePost по коду строки (StatService::dateFlags)
  */
 
 use yii\helpers\Html;
@@ -26,6 +27,7 @@ $css = static fn($c) => ($c = (int)$c) ? sprintf('#%02x%02x%02x', $c & 255, ($c 
 $bnd = (float)($bnd ?? 0);
 $vid = (string)($vid ?? '');
 $paint = (bool)($paint ?? false);
+$flags = (array)($flags ?? []);
 
 if (!$rows): ?>
     <tr>
@@ -49,7 +51,8 @@ if (!$rows): ?>
             if (!$isB) {
                 if ($f === 'Analog' && !empty($r['NoAnalog'])) {
                     $style[] = 'background:' . $css(16761358);          // [NoAnalog] = true
-                } elseif ($f === 'Корпус' && !empty($r['IsDelayed'])) {
+                } elseif ($f === 'Корпус' && $paint && !empty($r['IsDelayed'])) {
+                    // MakeColorDolgStat: формат добавляется только при FlgPaintDolg
                     $style[] = 'background:' . $css(16737945);          // [IsDelayed] = true
                 } elseif ($f === 'ГдеКупил') {
                     $mv = (int)($r['ExistMove'] ?? 0);
@@ -94,6 +97,23 @@ if (!$rows): ?>
             } elseif ($f === 'МинКоличество' && $paint && (int)($r['IsBoth'] ?? 0) === 1) {
                 // MakeColorDolgStat: только при FlgPaintDolg (признак менеджера)
                 $style[] = 'background:' . $css(16777164);
+            } elseif ($f === 'Наименование') {
+                // ExactDate([txtID])=True — жёсткий срок; DatePost([txtID])=True — срок уже наступил
+                $fl = $flags[(int)$code] ?? null;
+                if ($fl && $fl['ex']) {
+                    $bold = true;
+                } elseif ($fl && $fl['dp']) {
+                    $c = '#008000';
+                    $bold = true;
+                }
+            } elseif ($f === 'Номинал') {
+                // [SostProblEl]=5 — тёмно-фиолетовый фон; [NotRec]<>0 — маджентовый жирный текст
+                if ($sost === 5) {
+                    $style[] = 'background:#993366';
+                } elseif (!empty($r['NotRec'])) {
+                    $c = '#ff00ff';
+                    $bold = true;
+                }
             }
 
             if ($c !== '') $style[] = "color:$c";
@@ -105,12 +125,12 @@ if (!$rows): ?>
             ?>
             <?php if ($f === 'RequestSch'): /* CheckBox формы: ControlSource = RequestSch */ ?>
                 <td data-f="RequestSch" style="text-align:center">
-                    <input type="checkbox" class="vh-chk" data-code="<?= Html::encode($code) ?>"
+                    <input type="checkbox" class="vh-chk" data-act="ReqSch" data-code="<?= Html::encode($code) ?>"
                            title="Запросить счёт"<?= (int)($r['RequestSch'] ?? 0) !== 0 ? ' checked' : '' ?>>
                 </td>
             <?php elseif ($f === 'NotRec'): /* CheckBox формы NotRec — без подписи, как в frmMinimum */ ?>
                 <td data-f="NotRec" style="text-align:center">
-                    <input type="checkbox" class="vh-chk" disabled
+                    <input type="checkbox" class="vh-chk" data-act="NotRec" data-code="<?= Html::encode($code) ?>"
                            title="Не рекомендуется к поставке"<?= !empty($r['NotRec']) ? ' checked' : '' ?>>
                 </td>
             <?php else: ?>
