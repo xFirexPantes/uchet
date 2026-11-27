@@ -30,6 +30,7 @@
  * @var array $hints   подсказки по колонкам: поле => текст (StatService::hints)
  */
 
+use app\modules\zakupki\services\StatContext;
 use app\modules\zakupki\services\StatService;
 use yii\helpers\Html;
 use yii\helpers\Json;
@@ -455,6 +456,69 @@ $hasAllStatus = in_array(255, array_column($statuses, 'id'), true);
 
     </div><?php /* .vh-stack */ ?>
 
+    <?php /* Легенда цветов списка — по кнопке «? Цвета».
+             Цвета и условия — fnRepaintFormStat (frmSt) и ConditionalFormat14 frmMinimum;
+             расшифровки «На Сокол» / «На Торэкс» — по подсказкам Descr главной формы. */ ?>
+    <div class="vh-modal" id="stHintsBox">
+        <div class="vh-modal-box" role="dialog" aria-modal="true" aria-labelledby="stHintsT">
+            <div class="vh-modal-head">
+                <span id="stHintsT">Цвета в списке элементов</span>
+                <button type="button" class="vh-modal-x" id="stHintsX" title="Закрыть (Esc)">✕</button>
+            </div>
+            <div class="vh-modal-body">
+                <p class="vh-hint">Цвет фона или текста в столбце подсказывает состояние элемента.</p>
+                <div class="vh-hints">
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Недополучено</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-green"></span><span class="vh-sw-t sw-green">На Сокол</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-plain"></span><span class="vh-sw-t vh-b">жирный — есть недополучение</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Примечание</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-sky"></span><span class="vh-sw-t sw-sky">На Торэкс</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Изготовитель (вид 1)</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-green"></span><span class="vh-sw-t sw-green">в работе</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-yellow"></span><span class="vh-sw-t sw-yellow">тех. запас</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-blue"></span><span class="vh-sw-t sw-blue">контроль сроков</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Код</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-blue"></span><span class="vh-sw-t sw-blue">можно забирать</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Заказать</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-red"></span><span class="vh-sw-t sw-red">заказать (число &gt; 0)</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Дешевле</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-blue"></span><span class="vh-sw-t sw-blue">цена дошла до границы</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Покупать в</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-sky"></span><span class="vh-sw-t sw-sky">перенос на складе</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-peach"></span><span class="vh-sw-t sw-peach">входной контроль</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Кол-во / Минимум</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-yellow"></span><span class="vh-sw-t sw-yellow">проблемные элементы</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-sky"></span><span class="vh-sw-t sw-sky">совпадение складов</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Аналог / Корпус</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-azure"></span><span class="vh-sw-t sw-azure">нет аналога</span></div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-violet"></span><span class="vh-sw-t sw-violet">срок поставки просрочен</span></div>
+                    </div>
+                    <div class="vh-hints-col">
+                        <div class="vh-hints-t">Строка</div>
+                        <div class="vh-hint-row"><span class="vh-sw sw-mint"></span><span class="vh-sw-t sw-green">счёт запрошен</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php /* Диалог текста: frmShowPrim (ветки 58/81/83) — примечание элемента, комментарий производства, просмотр */ ?>
     <div class="vh-sdlg" id="stDlg" hidden>
         <div class="vh-sdlg-box" role="dialog" aria-modal="true" aria-labelledby="stDlgT">
@@ -579,6 +643,43 @@ input[type=date].vh-inp { padding:0 .2rem; }
    на колонках «Название темы» и «Пробл»: [DtaPost]>Date() — пурпурный, =Date() — оливковый. */
 .vh-list td.res-future { background:rgba(255,0,255,.16); }
 .vh-list td.res-today { background:rgba(128,128,0,.20); }
+/* Галка «Счёт запр.» в списке (CheckBox RequestSch) */
+.vh-chk { width:13px; height:13px; margin:0; cursor:pointer; vertical-align:middle; accent-color:var(--vh-blue); }
+
+/* Легенда цветов — окно поверх страницы (как «? Цвета» в списке счетов) */
+.vh-modal { display:none; position:fixed; inset:0; z-index:1000; background:rgba(27,92,114,.28);
+    align-items:center; justify-content:center; }
+.vh-modal.on { display:flex; }
+.vh-modal-box { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.6rem; min-width:320px;
+    max-width:min(920px,94vw); max-height:calc(100vh - 24px); display:flex; flex-direction:column;
+    box-shadow:0 16px 44px rgba(27,92,114,.30); overflow:hidden; }
+.vh-modal-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex:0 0 auto;
+    padding:.4rem .7rem; background:var(--vh-blue-l); border-bottom:1px solid var(--vh-blue-b);
+    color:var(--vh-ink); font-weight:600; font-size:.78rem; text-transform:uppercase; letter-spacing:.03em; }
+.vh-modal-x { background:#fff; border:1px solid var(--vh-blue-b); border-radius:.3rem; color:var(--vh-ink);
+    width:22px; height:20px; font-size:11px; line-height:1; cursor:pointer; }
+.vh-modal-x:hover { background:var(--vh-blue); border-color:var(--vh-blue); color:#fff; }
+.vh-modal-body { padding:.6rem .75rem; overflow:auto; }
+.vh-hint { margin:0 0 .5rem; font-size:.72rem; color:#5b8598; }
+.vh-hints { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:.55rem .9rem; }
+.vh-hints-col { min-width:0; }
+.vh-hints-t { font-size:.68rem; font-weight:600; color:var(--vh-ink); text-transform:uppercase;
+    letter-spacing:.03em; border-bottom:1px solid var(--vh-blue-b); padding-bottom:.15rem; margin-bottom:.25rem; }
+.vh-hint-row { display:flex; align-items:center; gap:.4rem; font-size:.78rem; padding:.05rem 0; }
+.vh-sw { flex:0 0 auto; width:14px; height:14px; border-radius:.2rem; border:1px solid rgba(27,92,114,.25); }
+.vh-sw-t { color:#20414d; }
+.vh-b { font-weight:700; }
+/* Цвета — ровно те, что ставит fnRepaintFormStat / ConditionalFormat14 (Access BGR → RGB) */
+.vh-sw.sw-red { background:#ff0000; }      .vh-sw-t.sw-red { color:#c00; }
+.vh-sw.sw-blue { background:#0000ff; }     .vh-sw-t.sw-blue { color:#0000cc; }
+.vh-sw.sw-green { background:#ccffcc; }    .vh-sw-t.sw-green { color:#0a7a2a; }
+.vh-sw.sw-yellow { background:#ffff00; }   .vh-sw-t.sw-yellow { color:#8a7a00; }
+.vh-sw.sw-sky { background:#ccffff; }      .vh-sw-t.sw-sky { color:#0f7f8f; }
+.vh-sw.sw-peach { background:#fce6d4; }    .vh-sw-t.sw-peach { color:#a8641f; }
+.vh-sw.sw-azure { background:#0ec2ff; }    .vh-sw-t.sw-azure { color:#0a7f9c; }
+.vh-sw.sw-violet { background:#9966ff; }   .vh-sw-t.sw-violet { color:#5a3a9a; }
+.vh-sw.sw-mint { background:#b1ffb1; }
+.vh-sw.sw-plain { background:#fff; }
 .empty { color:#7d9aa7; font-style:italic; padding:.5rem .6rem; }
 
 /* Футер frmMinimum: граница цены, курс, разница, «без тех.запаса» */
@@ -1038,6 +1139,16 @@ $this->registerJs(<<<'JS'
     if (dlgSl) dlgSl.addEventListener('dblclick', () => { if (dlgSubmit) dlgSubmit(); });
     if (dlg)   dlg.addEventListener('click', e => { if (e.target === dlg) closeDlg(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && dlg && !dlg.hidden) closeDlg(); });
+
+    // Легенда цветов: «? Цвета» в шапке списка (как btnHints в списке счетов)
+    const hints    = document.getElementById('stHintsBox');
+    const hintsBtn = document.getElementById('stHints');
+    const hintsX   = document.getElementById('stHintsX');
+    const closeHints = () => hints && hints.classList.remove('on');
+    if (hintsBtn && hints) hintsBtn.addEventListener('click', () => hints.classList.add('on'));
+    if (hintsX) hintsX.addEventListener('click', closeHints);
+    if (hints)  hints.addEventListener('click', e => { if (e.target === hints) closeHints(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHints(); });
 
     const stamp = () => {
         const d = new Date();
